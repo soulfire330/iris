@@ -75,6 +75,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
         isLocal: true,
         name: `${session.name} (вы)`,
         role: session.role,
+        seed: session.avatar_seed,
         speaking: speakers.has(local.identity),
         muted: !micOn,
         poor: false,
@@ -270,6 +271,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
                   state={{
                     name: m.name,
                     role: m.role,
+                    seed: m.seed,
                     speaking: m.speaking,
                     muted: m.muted,
                     poor: m.poor,

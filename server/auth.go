@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -56,7 +57,9 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	a.limits.Reset(key)
 
-	seed := emp.Login // аватар — DiceBear Critters, seed = логин (детерминирован)
+	// Случайный аватар на каждый вход: seed уходит в metadata токена —
+	// все клиенты видят одного и того же зверя, но при новом входе — нового.
+	seed := fmt.Sprintf("%s-%x", emp.Login, time.Now().UnixNano())
 
 	token, err := a.LiveKitToken(emp.Login, emp.Name, seed, emp.Role)
 	if err != nil {

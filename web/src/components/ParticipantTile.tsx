@@ -15,6 +15,7 @@ import { Video } from '@/components/Video'
 export interface TileState {
   name: string
   role?: string
+  seed?: string
   speaking: boolean
   muted: boolean
   poor: boolean
@@ -77,7 +78,7 @@ export function ParticipantTile({
         <>
           {participant ? (
             <img
-              src={avatarUrl(participant.identity)}
+              src={avatarUrl(participant.identity, state.seed)}
               alt=""
               className="h-[max(60px,8.5cqw)] w-[max(60px,8.5cqw)] flex-none rounded-full bg-secondary object-cover"
             />

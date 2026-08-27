@@ -8,6 +8,7 @@ export interface Member {
   isLocal?: boolean
   name: string
   role?: string
+  seed?: string
   speaking: boolean
   muted: boolean
   poor: boolean
@@ -23,6 +24,7 @@ export function fromParticipant(p: Participant, isLocal: boolean, speaking: bool
     isLocal,
     name: p.name || p.identity,
     role: meta.role,
+    seed: meta.seed,
     speaking,
     muted: !p.isMicrophoneEnabled,
     poor:
