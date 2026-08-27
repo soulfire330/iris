@@ -355,37 +355,51 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
                 'max-[1180px]:grid-cols-2 max-[900px]:grid-cols-1',
               )}
             >
-              {!connected && !error && (
-                <div className="col-span-full flex items-center justify-center py-12 font-mono text-[11px] text-neutral-600">
-                  Подключаемся…
-                </div>
-              )}
-              {members.map((m) => (
+              {!connected && !error ? (
+                // Одна плитка — локальная: пока комната подключается, в ней
+                // спиннер вместо аватарки; после подключения та же плитка
+                // становится живой. Сетка не прыгает и не дублируется.
                 <ParticipantTile
-                  key={m.id}
-                  participant={m.participant}
-                  isLocal={m.isLocal}
+                  connecting
                   state={{
-                    name: m.name,
-                    role: m.role,
-                    seed: m.seed,
-                    speaking: m.speaking,
-                    muted: m.muted,
-                    poor: m.poor,
-                    cameraOn: m.cameraOn,
-                    screenSharing: m.screenSharing,
+                    name: session.name,
+                    role: session.role,
+                    seed: session.avatar_seed,
+                    speaking: false,
+                    muted: true,
+                    poor: false,
+                    cameraOn: false,
+                    screenSharing: false,
                   }}
-                  onExpand={
-                    (m.cameraOn || m.screenSharing) && m.participant
-                      ? () =>
-                          setStage({
-                            id: m.id,
-                            source: m.screenSharing ? Track.Source.ScreenShare : Track.Source.Camera,
-                          })
-                      : undefined
-                  }
                 />
-              ))}
+              ) : (
+                members.map((m) => (
+                  <ParticipantTile
+                    key={m.id}
+                    participant={m.participant}
+                    isLocal={m.isLocal}
+                    state={{
+                      name: m.name,
+                      role: m.role,
+                      seed: m.seed,
+                      speaking: m.speaking,
+                      muted: m.muted,
+                      poor: m.poor,
+                      cameraOn: m.cameraOn,
+                      screenSharing: m.screenSharing,
+                    }}
+                    onExpand={
+                      (m.cameraOn || m.screenSharing) && m.participant
+                        ? () =>
+                            setStage({
+                              id: m.id,
+                              source: m.screenSharing ? Track.Source.ScreenShare : Track.Source.Camera,
+                            })
+                        : undefined
+                    }
+                  />
+                ))
+              )}
             </div>
             {callBar(panelToggle)}
           </div>
