@@ -105,8 +105,14 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
   }
 
   // Развёрнутый источник исчез (выключили камеру/экран) — крупный план закрываем.
+  // Но сначала: если человек перешёл с вебки на экран — крупный план следует
+  // за ним (иначе гонка с «источник исчез» падала бы в сетку).
   useEffect(() => {
     if (!stage || !stageMember) return
+    if (stage.source === Track.Source.Camera && stageMember.screenSharing) {
+      setStage({ id: stageMember.id, source: Track.Source.ScreenShare })
+      return
+    }
     const has = stage.source === Track.Source.ScreenShare ? stageMember.screenSharing : stageMember.cameraOn
     if (!has) setStage(null)
   }, [stage, stageMember])
