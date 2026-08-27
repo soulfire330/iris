@@ -36,6 +36,24 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
     }
   }, [room])
 
+  // Доступность устройств: без микрофона/камеры кнопки серые. Проверяем по
+  // перечню устройств (enumerateDevices не требует разрешения).
+  const [micAvailable, setMicAvailable] = useState(true)
+  const [camAvailable, setCamAvailable] = useState(true)
+  useEffect(() => {
+    let alive = true
+    const check = async () => {
+      const list = await navigator.mediaDevices.enumerateDevices().catch(() => [] as MediaDeviceInfo[])
+      if (!alive) return
+      setMicAvailable(list.some((d) => d.kind === 'audioinput'))
+      setCamAvailable(list.some((d) => d.kind === 'videoinput'))
+    }
+    void check()
+    return () => {
+      alive = false
+    }
+  }, [])
+
   // Таймер встречи: тикает локально, но время — серверное (now + сдвиг часов),
   // поэтому у всех участников одинаковые цифры.
   const [now, setNow] = useState(() => Date.now())
@@ -126,6 +144,8 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
       muted={!micOn}
       cameraOn={camOn}
       screenOn={screenOn}
+      micAvailable={micAvailable}
+      camAvailable={camAvailable}
       onMic={() => void setMic(!micOn)}
       onCamera={() => void setCam(!camOn)}
       onScreen={() => void setScreen(!screenOn)}

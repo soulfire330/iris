@@ -14,6 +14,8 @@ export interface CallBarProps {
   muted: boolean
   cameraOn: boolean
   screenOn: boolean
+  micAvailable: boolean
+  camAvailable: boolean
   onMic: () => void
   onCamera: () => void
   onScreen: () => void
@@ -31,6 +33,7 @@ export function CallBar(p: CallBarProps) {
           onClick={p.onMic}
           active={!p.muted}
           activeClass="text-primary"
+          disabled={!p.micAvailable}
           label={p.muted ? 'Включить микрофон' : 'Выключить микрофон'}
         >
           {p.muted ? <MicrophoneSlash /> : <Microphone weight="fill" />}
@@ -43,7 +46,7 @@ export function CallBar(p: CallBarProps) {
         >
           <MonitorArrowUp />
         </IconButton>
-        <IconButton onClick={p.onCamera} active={p.cameraOn} activeClass="text-destructive" label={p.cameraOn ? 'Выключить камеру' : 'Включить камеру'}>
+        <IconButton onClick={p.onCamera} active={p.cameraOn} activeClass="text-destructive" disabled={!p.camAvailable} label={p.cameraOn ? 'Выключить камеру' : 'Включить камеру'}>
           <VideoCamera />
         </IconButton>
         {p.extra}
@@ -73,12 +76,14 @@ function IconButton({
   onClick,
   active,
   activeClass,
+  disabled,
   label,
   children,
 }: {
   onClick: () => void
   active?: boolean
   activeClass?: string
+  disabled?: boolean
   label: string
   children: ReactNode
 }) {
@@ -89,6 +94,7 @@ function IconButton({
       onClick={onClick}
       aria-label={label}
       aria-pressed={active}
+      disabled={disabled}
     >
       {children}
     </Button>
