@@ -93,6 +93,7 @@ function IconButton({
       className={active ? cn(activeClass, 'h-9 w-9') : cn('h-9 w-9 text-primary')}
       onClick={onClick}
       aria-label={label}
+      title={label}
       aria-pressed={active}
       disabled={disabled}
     >
