@@ -156,10 +156,10 @@ export function ScreenView({
                           <Microphone className="h-[10px] w-[10px] flex-none text-neutral-500" />
                         )}
                         {m.screenSharing && (
-                          <MonitorArrowUp className="h-[10px] w-[10px] flex-none text-neutral-500" />
+                          <MonitorArrowUp className="h-[10px] w-[10px] flex-none text-destructive" />
                         )}
                         {m.cameraOn && (
-                          <VideoCamera className="h-[10px] w-[10px] flex-none text-neutral-500" />
+                          <VideoCamera className="h-[10px] w-[10px] flex-none text-destructive" />
                         )}
                       </>
                     )}
@@ -214,10 +214,10 @@ export function ScreenView({
                         <Microphone className="h-[13px] w-[13px] flex-none text-neutral-500" />
                       )}
                       {m.screenSharing && (
-                        <MonitorArrowUp className="h-[13px] w-[13px] flex-none text-neutral-500" />
+                        <MonitorArrowUp className="h-[13px] w-[13px] flex-none text-destructive" />
                       )}
                       {m.cameraOn && (
-                        <VideoCamera className="h-[13px] w-[13px] flex-none text-neutral-500" />
+                        <VideoCamera className="h-[13px] w-[13px] flex-none text-destructive" />
                       )}
                     </>
                   )}
