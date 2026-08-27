@@ -114,7 +114,7 @@ export function ParticipantTile({
         <button
           onClick={onExpand}
           title="На крупный план"
-          className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-md bg-neutral-900/70 text-neutral-100 opacity-0 transition-opacity hover:bg-neutral-900 group-hover:opacity-100"
+          className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-md text-neutral-100 opacity-0 transition-opacity hover:bg-neutral-900/70 group-hover:opacity-100"
         >
           <CornersOut className="h-4 w-4" />
         </button>

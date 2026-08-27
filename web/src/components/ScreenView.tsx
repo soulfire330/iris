@@ -50,7 +50,7 @@ export function ScreenView({
           <button
             onClick={onCollapse}
             title="К общему виду"
-            className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-md bg-neutral-900/70 text-neutral-100 shadow-sm transition-colors hover:bg-neutral-900"
+            className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-md text-neutral-100 transition-colors hover:bg-neutral-900/70"
           >
             <SquaresFour className="h-4 w-4" />
           </button>
