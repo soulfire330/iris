@@ -27,24 +27,24 @@ export function CallBar(p: CallBarProps) {
   return (
     <div className="flex flex-none flex-wrap items-center justify-between gap-4 rounded-md bg-card p-3 shadow-sm">
       <div className="flex items-center gap-3">
-        <Button onClick={p.onMic} variant="ghost" className="gap-2 border-primary text-primary hover:bg-primary/10 hover:text-primary">
-          {p.muted ? <MicrophoneSlash weight="regular" /> : <Microphone weight="fill" />}
-          <span>Микрофон</span>
-        </Button>
-        <Button
-          onClick={p.onScreen}
-          variant="ghost"
-          className={
-            p.screenOn
-              ? 'gap-2 border-destructive/60 text-destructive hover:bg-destructive/10 hover:text-destructive'
-              : 'gap-2 border-primary text-primary hover:bg-primary/10 hover:text-primary'
-          }
+        <IconButton
+          onClick={p.onMic}
+          active={!p.muted}
+          activeClass="text-primary"
+          label={p.muted ? 'Включить микрофон' : 'Выключить микрофон'}
         >
-          {p.screenOn ? <X weight="bold" /> : <MonitorArrowUp weight="regular" />}
-          <span>{p.screenOn ? 'Закончить демонстрацию' : 'Демонстрация'}</span>
-        </Button>
-        <IconButton onClick={p.onCamera} active={p.cameraOn} label="Включить камеру">
-          <VideoCamera />
+          {p.muted ? <MicrophoneSlash /> : <Microphone weight="fill" />}
+        </IconButton>
+        <IconButton
+          onClick={p.onScreen}
+          active={p.screenOn}
+          activeClass="text-destructive"
+          label={p.screenOn ? 'Закончить демонстрацию' : 'Начать демонстрацию'}
+        >
+          {p.screenOn ? <X weight="bold" /> : <MonitorArrowUp />}
+        </IconButton>
+        <IconButton onClick={p.onCamera} active={p.cameraOn} activeClass="text-primary" label={p.cameraOn ? 'Выключить камеру' : 'Включить камеру'}>
+          <VideoCamera weight={p.cameraOn ? 'fill' : 'regular'} />
         </IconButton>
         {p.extra}
       </div>
