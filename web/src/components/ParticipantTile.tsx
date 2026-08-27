@@ -78,10 +78,10 @@ export function ParticipantTile({
             <img
               src={`/api/avatar/${participant.identity}`}
               alt=""
-              className="h-[60px] w-[60px] flex-none rounded-full bg-secondary object-cover"
+              className="h-[max(60px,8.5cqw)] w-[max(60px,8.5cqw)] flex-none rounded-full bg-secondary object-cover"
             />
           ) : (
-            <div className="flex h-[60px] w-[60px] flex-none items-center justify-center rounded-full bg-secondary text-[18px] font-medium text-secondary-foreground">
+            <div className="flex h-[max(60px,8.5cqw)] w-[max(60px,8.5cqw)] flex-none items-center justify-center rounded-full bg-secondary text-[max(18px,2.4cqw)] font-medium text-secondary-foreground">
               {initials(name)}
             </div>
           )}
