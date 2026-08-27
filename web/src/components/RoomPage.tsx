@@ -1,4 +1,4 @@
-import { CornersOut, X } from '@phosphor-icons/react'
+import { CornersOut } from '@phosphor-icons/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { RoomEvent, Track, type LocalTrackPublication } from 'livekit-client'
 import { Button } from '@/components/ui/button'
@@ -125,6 +125,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
     <CallBar
       muted={!micOn}
       cameraOn={camOn}
+      screenOn={screenOn}
       onMic={() => void setMic(!micOn)}
       onCamera={() => void setCam(!camOn)}
       onScreen={() => void setScreen(!screenOn)}
@@ -173,7 +174,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
             speaker={speaker}
             stageRef={stageRef}
             callBar={callBar(
-              <>
+              !sharer.isLocal && (
                 <Button
                   variant="ghost"
                   className="gap-2 text-[12px]"
@@ -182,17 +183,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
                   <CornersOut className="h-[15px] w-[15px]" />
                   <span>Во весь экран</span>
                 </Button>
-                {sharer.isLocal && (
-                  <Button
-                    variant="secondary"
-                    className="gap-2 text-[12px]"
-                    onClick={() => void setScreen(false)}
-                  >
-                    <X className="h-[15px] w-[15px]" />
-                    <span>Свернуть показ</span>
-                  </Button>
-                )}
-              </>,
+              ),
             )}
           />
         ) : (

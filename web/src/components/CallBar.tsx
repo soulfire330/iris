@@ -13,11 +13,12 @@ import { cn } from '@/lib/utils'
 export interface CallBarProps {
   muted: boolean
   cameraOn: boolean
+  screenOn: boolean
   onMic: () => void
   onCamera: () => void
   onScreen: () => void
   onLeave: () => void
-  extra?: ReactNode // «Во весь экран» / «Свернуть показ» в раскладке экрана
+  extra?: ReactNode // «Во весь экран» для зрителей показа
   onPanel?: () => void
   onClosePanel?: () => void
 }
@@ -30,9 +31,10 @@ export function CallBar(p: CallBarProps) {
           {p.muted ? <MicrophoneSlash weight="regular" /> : <Microphone weight="fill" />}
           <span>Микрофон</span>
         </Button>
-        <IconButton onClick={p.onScreen} label="Показать экран">
-          <MonitorArrowUp />
-        </IconButton>
+        <Button onClick={p.onScreen} variant="ghost" className="gap-2 border-primary text-primary hover:bg-primary/10 hover:text-primary">
+          <MonitorArrowUp weight={p.screenOn ? 'fill' : 'regular'} />
+          <span>{p.screenOn ? 'Свернуть показ' : 'Демонстрация'}</span>
+        </Button>
         <IconButton onClick={p.onCamera} active={p.cameraOn} label="Включить камеру">
           <VideoCamera />
         </IconButton>
