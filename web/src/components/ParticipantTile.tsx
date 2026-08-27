@@ -9,6 +9,7 @@ import {
 import { Participant, Track } from 'livekit-client'
 import { cn } from '@/lib/utils'
 import { initials } from '@/lib/names'
+import { avatarUrl } from '@/lib/avatars'
 import { Video } from '@/components/Video'
 
 export interface TileState {
@@ -76,7 +77,7 @@ export function ParticipantTile({
         <>
           {participant ? (
             <img
-              src={`/api/avatar/${participant.identity}`}
+              src={avatarUrl(participant.identity)}
               alt=""
               className="h-[max(60px,8.5cqw)] w-[max(60px,8.5cqw)] flex-none rounded-full bg-secondary object-cover"
             />

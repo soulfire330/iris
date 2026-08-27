@@ -37,7 +37,9 @@ func mustStyle() *dicebear.Style {
 // валидный ввод, секретов в ответе нет.
 func (a *App) handleAvatar(w http.ResponseWriter, r *http.Request) {
 	opts := maps.Clone(critterOptions)
-	opts["seed"] = r.PathValue("login")
+	// Seed = логин + случайный v из URL (клиент добавляет при входе) —
+	// аватар меняется с каждым заходом, но един в рамках сессии.
+	opts["seed"] = r.PathValue("login") + r.URL.Query().Get("v")
 
 	avatar, err := dicebear.NewAvatar(crittersStyle, opts)
 	if err != nil {

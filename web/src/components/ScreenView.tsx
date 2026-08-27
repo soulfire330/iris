@@ -13,6 +13,7 @@ import { Track } from 'livekit-client'
 import { Video } from '@/components/Video'
 import { cn } from '@/lib/utils'
 import { initials } from '@/lib/names'
+import { avatarUrl } from '@/lib/avatars'
 import type { Member } from '@/lib/members'
 
 // Раскладка «крупный план»: выбранный поток (экран или камера) на весь левый
@@ -133,7 +134,7 @@ export function ScreenView({
                     <div className="absolute inset-0 flex items-center justify-center bg-secondary">
                       {m.participant ? (
                         <img
-                          src={`/api/avatar/${m.participant.identity}`}
+                          src={avatarUrl(m.participant.identity)}
                           alt=""
                           className="h-full w-full object-cover"
                         />
@@ -194,7 +195,7 @@ export function ScreenView({
                     <div className="h-[28px] w-[28px] flex-none rounded-sm bg-[repeating-linear-gradient(135deg,var(--color-neutral-800)_0_6px,var(--color-neutral-900)_6px_12px)]" />
                   ) : m.participant ? (
                     <img
-                      src={`/api/avatar/${m.participant.identity}`}
+                      src={avatarUrl(m.participant.identity)}
                       alt=""
                       className="h-[28px] w-[28px] flex-none rounded-sm object-cover"
                     />
