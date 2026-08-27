@@ -124,10 +124,23 @@ export function ScreenView({
                       muted={m.isLocal}
                       className="absolute inset-0 h-full w-full object-cover"
                     />
-                  ) : (
-                    // Нет видео (фоллбек с крупного плана или вебка выключена) —
-                    // диагональные полосы вместо аватарки.
+                  ) : m.id === member.id ? (
+                    // Поток развёрнут на крупном плане — не дублируем: полосы.
                     <div className="absolute inset-0 bg-[repeating-linear-gradient(135deg,var(--color-neutral-800)_0_6px,var(--color-neutral-900)_6px_12px)]" />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-secondary">
+                      {m.participant ? (
+                        <img
+                          src={`/api/avatar/${m.participant.identity}`}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-[14px] font-medium text-secondary-foreground">
+                          {initials(m.name)}
+                        </span>
+                      )}
+                    </div>
                   )}
                   <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-background/90 px-2 py-1">
                     <span className="min-w-0 flex-1 truncate text-[11px]">{m.name}</span>
@@ -172,8 +185,18 @@ export function ScreenView({
                       muted={m.isLocal}
                       className="h-[28px] w-[28px] flex-none rounded-sm bg-muted object-cover"
                     />
-                  ) : (
+                  ) : m.id === member.id ? (
                     <div className="h-[28px] w-[28px] flex-none rounded-sm bg-[repeating-linear-gradient(135deg,var(--color-neutral-800)_0_6px,var(--color-neutral-900)_6px_12px)]" />
+                  ) : m.participant ? (
+                    <img
+                      src={`/api/avatar/${m.participant.identity}`}
+                      alt=""
+                      className="h-[28px] w-[28px] flex-none rounded-sm object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-[28px] w-[28px] flex-none items-center justify-center rounded-full bg-neutral-800 text-[11px] font-medium text-neutral-300">
+                      {initials(m.name)}
+                    </div>
                   )}
                   <span className="flex-1 truncate text-[12px]">{m.name}</span>
                   {m.poor ? (
