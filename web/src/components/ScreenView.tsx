@@ -5,6 +5,7 @@ import {
   MonitorArrowUp,
   SquaresFour,
   Users,
+  VideoCamera,
 } from '@phosphor-icons/react'
 import type { Ref } from 'react'
 import { useEffect, useRef, useState } from 'react'
@@ -157,6 +158,9 @@ export function ScreenView({
                         {m.screenSharing && (
                           <MonitorArrowUp className="h-[10px] w-[10px] flex-none text-neutral-500" />
                         )}
+                        {m.cameraOn && (
+                          <VideoCamera className="h-[10px] w-[10px] flex-none text-neutral-500" />
+                        )}
                       </>
                     )}
                   </div>
@@ -211,6 +215,9 @@ export function ScreenView({
                       )}
                       {m.screenSharing && (
                         <MonitorArrowUp className="h-[13px] w-[13px] flex-none text-neutral-500" />
+                      )}
+                      {m.cameraOn && (
+                        <VideoCamera className="h-[13px] w-[13px] flex-none text-neutral-500" />
                       )}
                     </>
                   )}
