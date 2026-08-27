@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	lksdk "github.com/livekit/server-sdk-go/v2"
@@ -15,6 +16,10 @@ type App struct {
 	cfg     *Config
 	limits  *LoginLimiter
 	livekit *lksdk.RoomServiceClient
+	egress  *lksdk.EgressClient
+	// recMu — одна запись на комнату: старт/стоп сериализуем, а источник
+	// правды — активные egress в LiveKit, не память.
+	recMu sync.Mutex
 }
 
 type loginReq struct {
@@ -23,12 +28,13 @@ type loginReq struct {
 }
 
 type loginResp struct {
-	Token   string `json:"token"`
-	Room    string `json:"room"`
-	Name    string `json:"name"`
-	Role    string `json:"role"`
-	Avatar  string `json:"avatar_seed"`
-	TokenTTL int   `json:"token_ttl_sec"`
+	Token     string `json:"token"`
+	Room      string `json:"room"`
+	Name      string `json:"name"`
+	Role      string `json:"role"`
+	Login     string `json:"login"`
+	Avatar    string `json:"avatar_seed"`
+	TokenTTL  int    `json:"token_ttl_sec"`
 }
 
 func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -73,6 +79,7 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		Room:     a.cfg.Server.Room,
 		Name:     emp.Name,
 		Role:     emp.Role,
+		Login:    emp.Login,
 		Avatar:   seed,
 		TokenTTL: int((6 * time.Hour).Seconds()),
 	})

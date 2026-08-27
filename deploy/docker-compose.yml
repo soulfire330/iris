@@ -31,6 +31,17 @@ services:
     ports:
       - "127.0.0.1:6379:6379"
 
+  # Права на общий каталог записей: docker создаёт bind-mount root:root 755,
+  # а egress работает под uid 1001 и не может писать. Разовый контейнер
+  # делает каталог группово-писаемым (группа root = gid 0 у egress).
+  recordings-init:
+    image: busybox:1.36
+    restart: "no"
+    user: "0:0"
+    volumes:
+      - ../data/recordings:/out/recordings
+    entrypoint: ["sh", "-c", "chgrp 0 /out/recordings && chmod 775 /out/recordings"]
+
   livekit-egress:
     image: livekit/egress:latest
     restart: unless-stopped
@@ -43,8 +54,12 @@ services:
       - ./egress.yaml:/etc/egress.yaml:ro
       - ../data/recordings:/out/recordings
     depends_on:
-      - redis
-      - livekit-server
+      redis:
+        condition: service_started
+      livekit-server:
+        condition: service_started
+      recordings-init:
+        condition: service_completed_successfully
 
   backend:
     build:
@@ -53,9 +68,11 @@ services:
     ports:
       - "127.0.0.1:8090:8090"
     volumes:
+      # Пути в config.yaml относительные (./data, ./web-dist) — монтируем всё
+      # под /etc/office, чтобы они резолвились в смонтированные каталоги.
       - ../config.yaml:/etc/office/config.yaml:ro
-      - ../data:/data
-      - ../web/dist:/web-dist:ro
+      - ../data:/etc/office/data
+      - ../web/dist:/etc/office/web-dist:ro
     command: ["-config", "/etc/office/config.yaml"]
 
 volumes:

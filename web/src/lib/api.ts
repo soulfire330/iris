@@ -2,6 +2,7 @@ export interface Session {
   token: string
   room: string
   name: string
+  login: string
   role?: string
   avatar_seed: string
   token_ttl_sec: number
@@ -31,4 +32,39 @@ export async function fetchRoomInfo(): Promise<RoomInfo> {
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error ?? `Ошибка ${res.status}`)
   return data as RoomInfo
+}
+
+// Запись комнаты: серверная, через LiveKit Egress (ADR-0002). Статус для UI
+// приходит не из этих вызовов, а из метаданных комнаты (roomMetadataChanged).
+
+export interface RecordingFile {
+  name: string
+  started_at: string
+  started_by: string
+  participants: string[]
+  size: number
+}
+
+export async function startRecording(login: string): Promise<void> {
+  const res = await fetch('/api/recording/start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ login }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error ?? `Ошибка ${res.status}`)
+}
+
+export async function stopRecording(): Promise<{ stopped: boolean }> {
+  const res = await fetch('/api/recording/stop', { method: 'POST' })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error ?? `Ошибка ${res.status}`)
+  return data as { stopped: boolean }
+}
+
+export async function fetchRecordings(): Promise<RecordingFile[]> {
+  const res = await fetch('/api/recordings')
+  const data = await res.json().catch(() => ([]))
+  if (!res.ok) throw new Error(data.error ?? `Ошибка ${res.status}`)
+  return data as RecordingFile[]
 }

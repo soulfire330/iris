@@ -9,7 +9,7 @@ import { ScreenView } from '@/components/ScreenView'
 import { SecretaryPanel, type PanelTab } from '@/components/SecretaryPanel'
 import { useChat } from '@/hooks/useChat'
 import { DEFAULT_DSP, useRoom } from '@/hooks/useRoom'
-import type { Session } from '@/lib/api'
+import { fetchRecordings, startRecording, stopRecording, type RecordingFile, type Session } from '@/lib/api'
 import { fromParticipant, type Member } from '@/lib/members'
 import { cn } from '@/lib/utils'
 
@@ -65,6 +65,74 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
       room.off(RoomEvent.LocalTrackUnpublished, onUnpublished)
     }
   }, [room])
+
+  // Запись: состояние — метаданные комнаты (бэкенд пишет их при старте/стопе
+  // egress), поэтому тег и кнопка синхронны у всех участников. При
+  // подключении берём текущее значение — запись могла идти до нас.
+  const [recording, setRecording] = useState(false)
+  useEffect(() => {
+    const sync = (meta: string) => setRecording(meta.includes('"recording":true'))
+    sync(room.metadata ?? '')
+    room.on(RoomEvent.RoomMetadataChanged, sync)
+    return () => {
+      room.off(RoomEvent.RoomMetadataChanged, sync)
+    }
+  }, [room, connected])
+
+  // Короткий сигнал на старт/стоп (решение Q4): все слышат, что их
+  // записывают. WebAudio, без ассетов.
+  const beep = (freq: number) => {
+    const ctx = new AudioContext()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.frequency.value = freq
+    gain.gain.setValueAtTime(0.12, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.15)
+    osc.connect(gain).connect(ctx.destination)
+    osc.start()
+    osc.stop(ctx.currentTime + 0.15)
+    osc.onended = () => void ctx.close()
+  }
+  const prevRecording = useRef(recording)
+  useEffect(() => {
+    if (recording === prevRecording.current) return
+    prevRecording.current = recording
+    beep(recording ? 880 : 440)
+  }, [recording])
+
+  const [actionError, setActionError] = useState('')
+  // Тик принудительного обновления списка записей: файл финализируется
+  // egress'ом с задержкой после стопа — без повтора список висит пустым.
+  const [recTick, setRecTick] = useState(0)
+  const onRecord = async () => {
+    setActionError('')
+    try {
+      if (recording) {
+        await stopRecording()
+        setTimeout(() => setRecTick((t) => t + 1), 2000)
+      } else {
+        await startRecording(session.login)
+      }
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  // Список записей для таба «Сводки»: тянем при входе в комнату и после
+  // каждого старта/стопа записи и по тику после стопа (файл дописывается).
+  // Без panelOpen в условии: на широком экране колонка видна всегда, а
+  // panelOpen описывает только оверлей на узком.
+  const [recordings, setRecordings] = useState<RecordingFile[]>([])
+  useEffect(() => {
+    if (panel !== 'summaries') return
+    let alive = true
+    fetchRecordings()
+      .then((list) => alive && setRecordings(list))
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [panel, panelOpen, recording, recTick])
 
   // Доступность устройств: без микрофона/камеры кнопки серые. Проверяем по
   // перечню устройств (enumerateDevices не требует разрешения).
@@ -203,11 +271,13 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
       muted={!micOn}
       cameraOn={camOn}
       screenOn={screenOn}
+      recording={recording}
       micAvailable={micAvailable}
       camAvailable={camAvailable}
       onMic={() => void setMic(!micOn)}
       onCamera={() => void setCam(!camOn)}
       onScreen={() => void setScreen(!screenOn)}
+      onRecord={() => void onRecord()}
       onLeave={onLeave}
       extra={extra}
     />
@@ -228,7 +298,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
       <RoomHeader
         count={members.length}
         elapsed={elapsed}
-        recording={false}
+        recording={recording}
         secretary={false}
         screenLabel={
           // Тег в шапке: «Экран», если кто-то демонстрирует (независимо от того,
@@ -240,9 +310,9 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
               : undefined
         }
       />
-      {error && (
+      {(error || actionError) && (
         <div className="flex-none border-b border-border bg-card px-6 py-1.5 font-mono text-[11px] text-warn">
-          {error}
+          {error || actionError}
         </div>
       )}
 
@@ -331,6 +401,8 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
             unread={chat.unread}
             connected={connected}
             onSend={chat.send}
+            recordings={recordings}
+            recording={recording}
           />
         ) : (
           <div className="hidden max-[1180px]:hidden min-[1181px]:block">
@@ -341,6 +413,8 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
               unread={chat.unread}
               connected={connected}
               onSend={chat.send}
+            recordings={recordings}
+            recording={recording}
             />
           </div>
         )}
@@ -356,6 +430,8 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
               unread={chat.unread}
               connected={connected}
               onSend={chat.send}
+            recordings={recordings}
+            recording={recording}
             />
           </div>
         </div>

@@ -23,6 +23,7 @@ func main() {
 		cfg:     cfg,
 		limits:  NewLoginLimiter(),
 		livekit: livekitService(cfg.Server.LiveKit.Host, cfg.Server.LiveKit.APIKey, cfg.Server.LiveKit.APISecret),
+		egress:  egressService(cfg.Server.LiveKit.Host, cfg.Server.LiveKit.APIKey, cfg.Server.LiveKit.APISecret),
 	}
 
 	mux := http.NewServeMux()
@@ -32,6 +33,10 @@ func main() {
 	mux.HandleFunc("POST /api/login", app.handleLogin)
 	mux.HandleFunc("GET /api/room", app.handleRoom)
 	mux.HandleFunc("GET /api/avatar/{login}", app.handleAvatar)
+	mux.HandleFunc("POST /api/recording/start", app.handleRecordingStart)
+	mux.HandleFunc("POST /api/recording/stop", app.handleRecordingStop)
+	mux.HandleFunc("GET /api/recordings", app.handleRecordingsList)
+	mux.HandleFunc("GET /api/recordings/{name}", app.handleRecordingDownload)
 	mux.Handle("/", http.FileServer(http.Dir(cfg.Server.WebDir)))
 
 	log.Printf("office: слушаю %s", cfg.Server.Listen)

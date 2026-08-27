@@ -1,8 +1,9 @@
-import { ChatTeardropText, FileText, PaperPlaneRight, Sparkle } from '@phosphor-icons/react'
+import { ChatTeardropText, DownloadSimple, FileText, PaperPlaneRight, Sparkle } from '@phosphor-icons/react'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { ChatMessage } from '@/lib/chat'
+import type { RecordingFile } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 export type PanelTab = 'summaries' | 'chat'
@@ -16,6 +17,8 @@ export function SecretaryPanel({
   unread,
   connected,
   onSend,
+  recordings,
+  recording,
 }: {
   tab: PanelTab
   onTabChange: (t: PanelTab) => void
@@ -23,6 +26,8 @@ export function SecretaryPanel({
   unread: number
   connected: boolean
   onSend: (text: string) => void
+  recordings: RecordingFile[]
+  recording: boolean
 }) {
   const [draft, setDraft] = useState('')
   // Обводка фокуса — только для клавиатуры: текстовый инпут всегда
@@ -59,6 +64,19 @@ export function SecretaryPanel({
   const formatTime = (ts: number) =>
     new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 
+  const formatRecDate = (iso: string) =>
+    new Date(iso).toLocaleString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+
+  const formatSize = (bytes: number) =>
+    bytes > 1024 * 1024
+      ? `${(bytes / 1024 / 1024).toFixed(1)} МБ`
+      : `${Math.max(1, Math.round(bytes / 1024))} КБ`
+
   return (
     <aside className="flex h-full min-h-0 w-[300px] flex-col border-l border-border bg-card">
       <div className="flex flex-none border-b border-border">
@@ -85,15 +103,49 @@ export function SecretaryPanel({
       >
         {tab === 'summaries' ? (
           <>
+            <div className="flex flex-col gap-2">
+              <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-neutral-600">
+                записи звонков
+              </span>
+              {recording ? (
+                <p className="text-[12px] leading-relaxed text-neutral-500">
+                  Запись идёт — файл появится в списке после остановки.
+                </p>
+              ) : recordings.length === 0 ? (
+                <p className="text-[12px] leading-relaxed text-neutral-500">
+                  Записей пока нет — нажмите кнопку записи в панели звонка.
+                </p>
+              ) : (
+                recordings.map((r) => (
+                  <div
+                    key={r.name}
+                    className="flex items-center justify-between gap-2 rounded-md border border-border bg-background/50 px-3 py-2"
+                  >
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <span className="text-[12px] font-medium">{formatRecDate(r.started_at)}</span>
+                      <span className="truncate font-mono text-[10px] text-neutral-500">
+                        {r.started_by}
+                        {(r.participants?.length ?? 0) > 0 && ` · ${r.participants.join(', ')}`}
+                        {' · '}
+                        {formatSize(r.size)}
+                      </span>
+                    </div>
+                    <a
+                      href={`/api/recordings/${encodeURIComponent(r.name)}`}
+                      download
+                      title="Скачать"
+                      className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-foreground/5 hover:text-foreground"
+                    >
+                      <DownloadSimple className="h-3.5 w-3.5" />
+                    </a>
+                  </div>
+                ))
+              )}
+            </div>
             <p className="text-[12px] leading-relaxed text-neutral-500">
               Секретарь пишет встречу и присылает сводку в чат комнаты после того, как вышел
               последний участник. По ходу разговора он молчит.
             </p>
-            <div className="flex flex-col gap-4">
-              <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-neutral-600">
-                прошлые встречи
-              </span>
-            </div>
             <Button variant="ghost" disabled className="mt-auto w-full gap-2 text-[12px]">
               <FileText className="h-[14px] w-[14px]" />
               <span>Все сводки</span>

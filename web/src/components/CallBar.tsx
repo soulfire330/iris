@@ -2,6 +2,7 @@ import {
   Microphone,
   MicrophoneSlash,
   MonitorArrowUp,
+  Record,
   SignOut,
   VideoCamera,
   X,
@@ -14,11 +15,13 @@ export interface CallBarProps {
   muted: boolean
   cameraOn: boolean
   screenOn: boolean
+  recording: boolean
   micAvailable: boolean
   camAvailable: boolean
   onMic: () => void
   onCamera: () => void
   onScreen: () => void
+  onRecord: () => void
   onLeave: () => void
   extra?: ReactNode // «Во весь экран» для зрителей показа
   onPanel?: () => void
@@ -37,6 +40,14 @@ export function CallBar(p: CallBarProps) {
           label={p.muted ? 'Включить микрофон' : 'Выключить микрофон'}
         >
           {p.muted ? <MicrophoneSlash /> : <Microphone weight="fill" />}
+        </IconButton>
+        <IconButton
+          onClick={p.onRecord}
+          active={p.recording}
+          activeClass="text-recording"
+          label={p.recording ? 'Остановить запись' : 'Записать звонок'}
+        >
+          <Record weight={p.recording ? 'fill' : 'regular'} />
         </IconButton>
         <IconButton
           onClick={p.onScreen}
