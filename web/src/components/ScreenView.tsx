@@ -53,12 +53,12 @@ export function ScreenView({
   }, [])
   const useTiles = members.length <= maxTiles
 
-  // Что показываем в плитке рельса: экран приоритетнее вебки, но то, что уже
-  // развёрнуто на крупном плане, не дублируем — фоллбек на камеру/аватарку.
+  // Что показываем в плитке рельса: только вебку. Экран в 190px не показываем —
+  // поток никому не нужен в таком размере, а кадры грузят сеть; вместо видео
+  // у показывающего подпись «Показывает экран». Развёрнутое на крупном плане
+  // не дублируем — фоллбек на камеру/полосы.
   const tileVideo = (m: Member) => {
     const staged = m.id === member.id
-    if (m.screenSharing && !(staged && source === Track.Source.ScreenShare))
-      return Track.Source.ScreenShare
     if (m.cameraOn && !(staged && source === Track.Source.Camera)) return Track.Source.Camera
     return null
   }
@@ -144,6 +144,13 @@ export function ScreenView({
                       )}
                     </div>
                   )}
+                  {m.screenSharing && !(videoSource && m.participant) && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-medium">
+                        Показывает экран
+                      </span>
+                    </div>
+                  )}
                   <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-background/90 px-2 py-1">
                     <span className="min-w-0 flex-1 truncate text-[11px]">{m.name}</span>
                     {m.poor ? (
@@ -154,9 +161,6 @@ export function ScreenView({
                           <MicrophoneSlash className="h-[10px] w-[10px] flex-none text-neutral-600" />
                         ) : (
                           <Microphone className="h-[10px] w-[10px] flex-none text-neutral-500" />
-                        )}
-                        {m.screenSharing && (
-                          <MonitorArrowUp className="h-[10px] w-[10px] flex-none text-neutral-500" />
                         )}
                         {m.cameraOn && (
                           <VideoCamera className="h-[10px] w-[10px] flex-none text-neutral-500" />
