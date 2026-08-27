@@ -31,9 +31,17 @@ export function CallBar(p: CallBarProps) {
           {p.muted ? <MicrophoneSlash weight="regular" /> : <Microphone weight="fill" />}
           <span>Микрофон</span>
         </Button>
-        <Button onClick={p.onScreen} variant="ghost" className="gap-2 border-primary text-primary hover:bg-primary/10 hover:text-primary">
-          <MonitorArrowUp weight={p.screenOn ? 'fill' : 'regular'} />
-          <span>{p.screenOn ? 'Свернуть показ' : 'Демонстрация'}</span>
+        <Button
+          onClick={p.onScreen}
+          variant="ghost"
+          className={
+            p.screenOn
+              ? 'gap-2 border-destructive/60 text-destructive hover:bg-destructive/10 hover:text-destructive'
+              : 'gap-2 border-primary text-primary hover:bg-primary/10 hover:text-primary'
+          }
+        >
+          {p.screenOn ? <X weight="bold" /> : <MonitorArrowUp weight="regular" />}
+          <span>{p.screenOn ? 'Закончить демонстрацию' : 'Демонстрация'}</span>
         </Button>
         <IconButton onClick={p.onCamera} active={p.cameraOn} label="Включить камеру">
           <VideoCamera />
