@@ -64,9 +64,17 @@ export function ParticipantTile({
         </>
       ) : (
         <>
-          <div className="flex h-[60px] w-[60px] flex-none items-center justify-center rounded-full bg-secondary text-[18px] font-medium text-secondary-foreground">
-            {initials(name)}
-          </div>
+          {participant ? (
+            <img
+              src={`/api/avatar/${participant.identity}`}
+              alt=""
+              className="h-[60px] w-[60px] flex-none rounded-full bg-secondary object-cover"
+            />
+          ) : (
+            <div className="flex h-[60px] w-[60px] flex-none items-center justify-center rounded-full bg-secondary text-[18px] font-medium text-secondary-foreground">
+              {initials(name)}
+            </div>
+          )}
           <div className="flex flex-col items-center gap-1">
             <span className="max-w-full truncate text-[15px] font-medium">{name}</span>
             {role && <span className="font-mono text-[10px] text-neutral-600">{role}</span>}

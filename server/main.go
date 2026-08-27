@@ -21,7 +21,6 @@ func main() {
 
 	app := &App{
 		cfg:     cfg,
-		avatars: NewAvatarStore(cfg.Server.DataDir),
 		limits:  NewLoginLimiter(),
 		livekit: livekitService(cfg.Server.LiveKit.Host, cfg.Server.LiveKit.APIKey, cfg.Server.LiveKit.APISecret),
 	}
@@ -32,6 +31,7 @@ func main() {
 	})
 	mux.HandleFunc("POST /api/login", app.handleLogin)
 	mux.HandleFunc("GET /api/room", app.handleRoom)
+	mux.HandleFunc("GET /api/avatar/{login}", app.handleAvatar)
 	mux.Handle("/", http.FileServer(http.Dir(cfg.Server.WebDir)))
 
 	log.Printf("office: слушаю %s", cfg.Server.Listen)

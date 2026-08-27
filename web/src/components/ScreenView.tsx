@@ -68,6 +68,12 @@ export function ScreenView({
                 muted={m.isLocal}
                 className="h-[28px] w-[28px] flex-none rounded-sm bg-muted object-cover"
               />
+            ) : m.participant ? (
+              <img
+                src={`/api/avatar/${m.participant.identity}`}
+                alt=""
+                className="h-[28px] w-[28px] flex-none rounded-sm object-cover"
+              />
             ) : (
               <div className="flex h-[28px] w-[28px] flex-none items-center justify-center rounded-full bg-neutral-800 text-[11px] font-medium text-neutral-300">
                 {initials(m.name)}

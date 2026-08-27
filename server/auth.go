@@ -12,7 +12,6 @@ import (
 
 type App struct {
 	cfg     *Config
-	avatars *AvatarStore
 	limits  *LoginLimiter
 	livekit *lksdk.RoomServiceClient
 }
@@ -57,12 +56,7 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	a.limits.Reset(key)
 
-	seed, err := a.avatars.Seed(emp.Login)
-	if err != nil {
-		log.Printf("avatars: %v", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "не удалось создать аватар"})
-		return
-	}
+	seed := emp.Login // аватар — DiceBear Critters, seed = логин (детерминирован)
 
 	token, err := a.LiveKitToken(emp.Login, emp.Name, seed, emp.Role)
 	if err != nil {
