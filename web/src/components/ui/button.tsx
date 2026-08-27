@@ -15,7 +15,7 @@ export function Button({ variant = 'default', className, ...props }: ButtonProps
       className={cn(
         base,
         variant === 'ghost'
-          ? 'border-transparent hover:bg-accent/10'
+          ? 'border-transparent hover:bg-primary/10'
           : variant === 'secondary'
             ? 'border-border hover:bg-[color-mix(in_oklch,var(--foreground)_7%,transparent)]'
             : 'bg-primary text-primary-foreground hover:bg-primary/80',
