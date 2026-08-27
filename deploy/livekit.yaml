@@ -1,0 +1,30 @@
+port: 7880
+log_level: info
+
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 60000
+  # включить на проде, если сервер за NAT с публичным IP (LiveKit сам определит IP через STUN)
+  # use_external_ip: true
+
+redis:
+  address: localhost:6379
+
+keys:
+  # dev-ключи. Для продакшна сменить: openssl rand -hex 32
+  devkey: 737e1186bfd64c48162e1f5981eda21b
+
+room:
+  auto_create: true
+  empty_timeout: 300
+
+# TURN — Фаза 4: нужен домен и сертификат (выпускается Caddy, см. Caddyfile).
+# Раскомментировать после получения серта:
+# turn:
+#   enabled: true
+#   domain: turn.example.com
+#   cert_file: /caddy-data/caddy/certificates/turn.example.com/turn.example.com.crt
+#   key_file: /caddy-data/caddy/certificates/turn.example.com/turn.example.com.key
+#   tls_port: 5349
+#   udp_port: 3478

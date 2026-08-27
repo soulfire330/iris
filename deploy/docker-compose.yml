@@ -1,0 +1,62 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      - backend
+
+  # host network: LiveKit сам слушает UDP/TCP порты на хосте (доки рекомендуют)
+  livekit-server:
+    image: livekit/livekit-server:latest
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+      # серт TURN читаем из хранилища сертификатов Caddy (Фаза 4)
+      - caddy_data:/caddy-data:ro
+    command: ["--config", "/etc/livekit.yaml"]
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  livekit-egress:
+    image: livekit/egress:latest
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - SYS_ADMIN
+    environment:
+      EGRESS_CONFIG_FILE: /etc/egress.yaml
+    volumes:
+      - ./egress.yaml:/etc/egress.yaml:ro
+      - ../data/recordings:/out/recordings
+    depends_on:
+      - redis
+      - livekit-server
+
+  backend:
+    build:
+      context: ../server
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8090:8090"
+    volumes:
+      - ../config.yaml:/etc/office/config.yaml:ro
+      - ../data:/data
+      - ../web/dist:/web-dist:ro
+    command: ["-config", "/etc/office/config.yaml"]
+
+volumes:
+  caddy_data:
