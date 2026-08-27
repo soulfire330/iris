@@ -97,6 +97,19 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
   }, [sharer?.id])
   const stageMember = stage ? members.find((m) => m.id === stage.id) : undefined
   const layout: 'grid' | 'stage' = stageMember ? 'stage' : 'grid'
+
+  // Клик по участнику в рельсе — на крупный план, экран приоритетнее вебки.
+  const selectStage = (m: Member) => {
+    if (m.screenSharing) setStage({ id: m.id, source: Track.Source.ScreenShare })
+    else if (m.cameraOn) setStage({ id: m.id, source: Track.Source.Camera })
+  }
+
+  // Развёрнутый источник исчез (выключили камеру/экран) — крупный план закрываем.
+  useEffect(() => {
+    if (!stage || !stageMember) return
+    const has = stage.source === Track.Source.ScreenShare ? stageMember.screenSharing : stageMember.cameraOn
+    if (!has) setStage(null)
+  }, [stage, stageMember])
   const speaker = members.find((m) => m.speaking)
 
   // Колонки от числа участников (диздок «Геометрия плитки»):
@@ -213,6 +226,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
             speaker={speaker}
             stageRef={stageRef}
             onCollapse={() => setStage(null)}
+            onSelect={selectStage}
             callBar={callBar(
               !stageMember.isLocal && (
                 <Button

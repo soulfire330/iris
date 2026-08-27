@@ -23,6 +23,7 @@ export function ScreenView({
   members,
   stageRef,
   onCollapse,
+  onSelect,
   callBar,
 }: {
   member: Member
@@ -31,6 +32,8 @@ export function ScreenView({
   members: Member[]
   stageRef: Ref<HTMLDivElement>
   onCollapse: () => void
+  // Клик по участнику в рельсе — поставить его поток на крупный план.
+  onSelect: (m: Member) => void
   callBar: React.ReactNode
 }) {
   // Пока участников мало — рельс показывает полноценные 16:9 плитки (вебку
@@ -48,6 +51,16 @@ export function ScreenView({
     return () => ro.disconnect()
   }, [])
   const useTiles = members.length <= maxTiles
+
+  // Что показываем в плитке рельса: экран приоритетнее вебки, но то, что уже
+  // развёрнуто на крупном плане, не дублируем — фоллбек на камеру/аватарку.
+  const tileVideo = (m: Member) => {
+    const staged = m.id === member.id
+    if (m.screenSharing && !(staged && source === Track.Source.ScreenShare))
+      return Track.Source.ScreenShare
+    if (m.cameraOn && !(staged && source === Track.Source.Camera)) return Track.Source.Camera
+    return null
+  }
 
   return (
     <>
@@ -86,107 +99,117 @@ export function ScreenView({
           <span className="text-[12px] font-medium">Участники</span>
           <span className="ml-auto font-mono text-[10px] text-neutral-600">{members.length}</span>
         </div>
-        <div
-          ref={railRef}
-          className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto p-3"
-        >
+        <div ref={railRef} className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto p-3">
           {useTiles ? (
-            members.map((m) => (
-              <div
-                key={m.id}
-                title={m.name}
-                className={cn(
-                  'relative aspect-[16/9] w-full flex-none overflow-hidden rounded-sm border border-border bg-neutral-900',
-                  m.id === member.id && 'shadow-[0_0_0_1px_var(--border)]',
-                )}
-              >
-                {m.cameraOn && m.participant ? (
-                  <Video
-                    participant={m.participant}
-                    source={Track.Source.Camera}
-                    muted={m.isLocal}
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-secondary">
-                    {m.participant ? (
-                      <img
-                        src={`/api/avatar/${m.participant.identity}`}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
+            members.map((m) => {
+              const videoSource = tileVideo(m)
+              const clickable = !!(m.cameraOn || m.screenSharing)
+              return (
+                <div
+                  key={m.id}
+                  title={m.name}
+                  onClick={clickable ? () => onSelect(m) : undefined}
+                  className={cn(
+                    'relative aspect-[16/9] w-full flex-none overflow-hidden rounded-sm border border-border bg-neutral-900',
+                    m.id === member.id && 'shadow-[0_0_0_1px_var(--border)]',
+                    clickable && 'cursor-pointer',
+                  )}
+                >
+                  {videoSource && m.participant ? (
+                    <Video
+                      participant={m.participant}
+                      source={videoSource}
+                      muted={m.isLocal}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-secondary">
+                      {m.participant ? (
+                        <img
+                          src={`/api/avatar/${m.participant.identity}`}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-[14px] font-medium text-secondary-foreground">
+                          {initials(m.name)}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-background/90 px-2 py-1">
+                    <span className="min-w-0 flex-1 truncate text-[11px]">{m.name}</span>
+                    {m.poor ? (
+                      <CellSignalMedium className="h-[10px] w-[10px] flex-none text-warn" />
                     ) : (
-                      <span className="text-[14px] font-medium text-secondary-foreground">
-                        {initials(m.name)}
-                      </span>
+                      <>
+                        {m.muted ? (
+                          <MicrophoneSlash className="h-[10px] w-[10px] flex-none text-neutral-600" />
+                        ) : (
+                          <Microphone className="h-[10px] w-[10px] flex-none text-neutral-500" />
+                        )}
+                        {m.screenSharing && (
+                          <MonitorArrowUp className="h-[10px] w-[10px] flex-none text-neutral-500" />
+                        )}
+                      </>
                     )}
                   </div>
-                )}
-                <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-background/90 px-2 py-1">
-                  <span className="min-w-0 flex-1 truncate text-[11px]">{m.name}</span>
+                </div>
+              )
+            })
+          ) : (
+            members.map((m) => {
+              const videoSource = tileVideo(m)
+              const clickable = !!(m.cameraOn || m.screenSharing)
+              return (
+                <div
+                  key={m.id}
+                  title={m.name}
+                  onClick={clickable ? () => onSelect(m) : undefined}
+                  className={cn(
+                    'flex flex-none items-center gap-3 rounded-sm p-2',
+                    m.id === member.id && 'shadow-[0_0_0_1px_var(--border)]',
+                    clickable && 'cursor-pointer hover:bg-primary/5',
+                  )}
+                >
+                  {videoSource && m.participant ? (
+                    <Video
+                      participant={m.participant}
+                      source={videoSource}
+                      muted={m.isLocal}
+                      className="h-[28px] w-[28px] flex-none rounded-sm bg-muted object-cover"
+                    />
+                  ) : m.participant ? (
+                    <img
+                      src={`/api/avatar/${m.participant.identity}`}
+                      alt=""
+                      className="h-[28px] w-[28px] flex-none rounded-sm object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-[28px] w-[28px] flex-none items-center justify-center rounded-full bg-neutral-800 text-[11px] font-medium text-neutral-300">
+                      {initials(m.name)}
+                    </div>
+                  )}
+                  <span className="flex-1 truncate text-[12px]">{m.name}</span>
                   {m.poor ? (
-                    <CellSignalMedium className="h-[10px] w-[10px] flex-none text-warn" />
+                    <CellSignalMedium className="h-[13px] w-[13px] flex-none text-warn" />
                   ) : (
                     <>
                       {m.muted ? (
-                        <MicrophoneSlash className="h-[10px] w-[10px] flex-none text-neutral-600" />
+                        <MicrophoneSlash className="h-[13px] w-[13px] flex-none text-neutral-600" />
                       ) : (
-                        <Microphone className="h-[10px] w-[10px] flex-none text-neutral-500" />
+                        <Microphone className="h-[13px] w-[13px] flex-none text-neutral-500" />
                       )}
                       {m.screenSharing && (
-                        <MonitorArrowUp className="h-[10px] w-[10px] flex-none text-neutral-500" />
+                        <MonitorArrowUp className="h-[13px] w-[13px] flex-none text-neutral-500" />
                       )}
                     </>
                   )}
                 </div>
-              </div>
-            ))
-          ) : (
-            members.map((m) => (
-              <div
-                key={m.id}
-                title={m.name}
-                className={cn(
-                  'flex flex-none items-center gap-3 rounded-sm p-2',
-                  m.id === member.id && 'shadow-[0_0_0_1px_var(--border)]',
-                )}
-              >
-              {m.cameraOn && m.participant ? (
-                <Video
-                  participant={m.participant}
-                  source={Track.Source.Camera}
-                  muted={m.isLocal}
-                  className="h-[28px] w-[28px] flex-none rounded-sm bg-muted object-cover"
-                />
-              ) : m.participant ? (
-                <img
-                  src={`/api/avatar/${m.participant.identity}`}
-                  alt=""
-                  className="h-[28px] w-[28px] flex-none rounded-sm object-cover"
-                />
-              ) : (
-                <div className="flex h-[28px] w-[28px] flex-none items-center justify-center rounded-full bg-neutral-800 text-[11px] font-medium text-neutral-300">
-                  {initials(m.name)}
-                </div>
-              )}
-              <span className="flex-1 truncate text-[12px]">{m.name}</span>
-              {m.poor ? (
-                <CellSignalMedium className="h-[13px] w-[13px] flex-none text-warn" />
-              ) : (
-                <>
-                  {m.muted ? (
-                    <MicrophoneSlash className="h-[13px] w-[13px] flex-none text-neutral-600" />
-                  ) : (
-                    <Microphone className="h-[13px] w-[13px] flex-none text-neutral-500" />
-                  )}
-                  {m.screenSharing && (
-                    <MonitorArrowUp className="h-[13px] w-[13px] flex-none text-neutral-500" />
-                  )}
-                </>
-              )}
-            </div>
-          )))}
-          </div>
+              )
+            })
+          )}
+        </div>
       </aside>
     </>
   )
