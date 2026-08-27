@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  createAudioAnalyser,
-  LocalAudioTrack,
   Participant,
   RemoteTrack,
   Room,
@@ -45,16 +43,19 @@ export function useRoom(token: string, dsp: DSP) {
   const [startedAt, setStartedAt] = useState<Date | null>(null)
   const [clockOffsetMs, setClockOffsetMs] = useState(0)
 
-  // Говорящий: показать через 50мс речи, снять через 50мс тишины на локальном
-  // пути (тик освежает каждые 100мс); для серверного списка снятие 500мс —
-  // сервер шлёт его только при изменении состава, иначе чужие плитки мигают.
-  // Отстрелявший таймер удаляется из карты — иначе следующий «true» упирается
-  // в мёртвый таймер и показ больше никогда не планируется.
+  // Говорящий — только серверный список ActiveSpeakersChanged, локального
+  // анализатора нет сознательно: если твоя плитка не загорается при речи —
+  // значит, сервер тебя не слышит (проблема со связью), а не «так и надо».
+  // Показ через 50мс, снятие через 250мс: сервер шлёт список только при
+  // изменении состава говорящих; меньше — плитки мигают на паузах между
+  // словами, больше — индикатор «прилипает». Отстрелявший таймер удаляется
+  // из карты — иначе следующий «true» упирается в мёртвый таймер и показ
+  // больше никогда не планируется.
   const shown = useRef<Map<string, boolean>>(new Map()) // identity -> виден ли сейчас
   const timers = useRef<Map<string, { t: ReturnType<typeof setTimeout>; show: boolean }>>(new Map())
   const [speakers, setSpeakers] = useState<Set<string>>(new Set())
 
-  const setShowing = useCallback((id: string, show: boolean, showMs = 50, hideMs = 500) => {
+  const setShowing = useCallback((id: string, show: boolean) => {
     const current = shown.current.get(id)
     const pending = timers.current.get(id)
     if (show === current) {
@@ -70,17 +71,10 @@ export function useRoom(token: string, dsp: DSP) {
         timers.current.delete(id)
         shown.current.set(id, show)
         setSpeakers(new Set([...shown.current].filter(([, v]) => v).map(([k]) => k)))
-      }, show ? showMs : hideMs),
+      }, show ? 50 : 250),
       show,
     })
   }, [])
-
-  // Локальный индикатор речи: серверный ActiveSpeakersChanged ходит по кругу
-  // аудио → сервер → обратно и запаздывает; свою плитку считаем по уровню звука
-  // прямо из микрофонного трека. Тик сам подхватывает трек, когда он появится
-  // (публикация регистрируется раньше, чем к ней привяжется track).
-  const localAnalyser = useRef<ReturnType<typeof createAudioAnalyser> | null>(null)
-  const localTrack = useRef<LocalAudioTrack | null>(null)
 
   useEffect(() => {
     setError('')
@@ -91,8 +85,8 @@ export function useRoom(token: string, dsp: DSP) {
     let alive = true
 
     const update = () => setRemote([...room.remoteParticipants.values()])
-    // Говорящий список приходит от сервера; локальный монитор показывает
-    // свою плитку быстрее, серверный — запасной путь и для неё.
+    // Список говорящих приходит от сервера — он же источник правды и для
+    // своей плитки (см. комментарий у setShowing).
     const onSpeakers = (list: Participant[]) => {
       const active = new Set(list.map((p) => p.identity))
       for (const id of active) setShowing(id, true)
@@ -178,37 +172,6 @@ export function useRoom(token: string, dsp: DSP) {
       .on(RoomEvent.Reconnected, onReconnected)
       .on(RoomEvent.Disconnected, onReconnecting)
 
-    // Локальные публикации (микрофон включили/выключили) — включают монитор речи.
-    const local = room.localParticipant
-    const localTick = setInterval(() => {
-      const pub = local.audioTrackPublications.get(Track.Source.Microphone)
-      const track = pub?.track
-      if (!track) {
-        if (localAnalyser.current) {
-          void localAnalyser.current.cleanup()
-          localAnalyser.current = null
-          localTrack.current = null
-        }
-        return
-      }
-      if (track.kind !== Track.Kind.Audio || !(track instanceof LocalAudioTrack)) return
-      // Микрофон перепубликовали (выкл/вкл) — analyser висит на старом потоке.
-      if (localTrack.current !== track) {
-        if (localAnalyser.current) void localAnalyser.current.cleanup()
-        try {
-          // smoothingTimeConstant 0.8 (по умолчанию) сглаживает спектр почти за
-          // секунду — индикатор «разгоняется» медленно даже без дебаунса.
-          localAnalyser.current = createAudioAnalyser(track, { smoothingTimeConstant: 0.1 })
-          localTrack.current = track
-        } catch {
-          return // браузер без WebAudio — остаёмся на серверном определении
-        }
-      }
-      if (localAnalyser.current) {
-        setShowing(local.identity, localAnalyser.current.calculateVolume() > 0.01, 0, 50)
-      }
-    }, 100)
-
     // Стартовое подключение. Промис может упасть (таймаут/обрыв), но комната
     // может восстановиться сама — тогда Connected снова переключит состояние
     // и сотрёт ошибку.
@@ -219,10 +182,6 @@ export function useRoom(token: string, dsp: DSP) {
     return () => {
       alive = false
       room.removeAllListeners()
-      clearInterval(localTick)
-      if (localAnalyser.current) void localAnalyser.current.cleanup()
-      localAnalyser.current = null
-      localTrack.current = null
       timers.current.forEach((t) => clearTimeout(t.t))
       room.disconnect()
     }
