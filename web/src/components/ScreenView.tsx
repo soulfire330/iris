@@ -111,7 +111,10 @@ export function ScreenView({
                   onClick={clickable ? () => onSelect(m) : undefined}
                   className={cn(
                     'relative aspect-[16/9] w-full flex-none overflow-hidden rounded-sm border border-border bg-neutral-900',
-                    m.id === member.id && 'shadow-[0_0_0_2px_var(--primary)]',
+                    // Выбранный — толще серая рамка, как «говорит», но серым;
+                    // реально говорящий перекрывает цветной индикацией.
+                    m.id === member.id && !m.speaking && 'border-2 border-neutral-400',
+                    m.speaking && 'shadow-[0_0_0_1px_var(--speaking),0_0_0_5px_var(--accent-900)]',
                     clickable && 'cursor-pointer',
                   )}
                 >
@@ -168,7 +171,8 @@ export function ScreenView({
                   onClick={clickable ? () => onSelect(m) : undefined}
                   className={cn(
                     'flex flex-none items-center gap-3 rounded-sm p-2',
-                    m.id === member.id && 'shadow-[0_0_0_2px_var(--primary)]',
+                    m.id === member.id && !m.speaking && 'shadow-[0_0_0_2px_var(--neutral-400)]',
+                    m.speaking && 'shadow-[0_0_0_1px_var(--speaking),0_0_0_5px_var(--accent-900)]',
                     clickable && 'cursor-pointer hover:bg-primary/5',
                   )}
                 >

@@ -197,11 +197,13 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
         recording={false}
         secretary={false}
         screenLabel={
-          stage && stageMember
-            ? stage.source === Track.Source.ScreenShare
-              ? `экран ${stageMember.name}`
-              : `камера ${stageMember.name}`
-            : undefined
+          // Тег в шапке: «Экран», если кто-то демонстрирует (независимо от того,
+          // чей поток на крупном плане); иначе — развёрнутая камера.
+          sharer
+            ? 'Экран'
+            : stage && stageMember
+              ? `камера ${stageMember.name}`
+              : undefined
         }
       />
       {error && (
