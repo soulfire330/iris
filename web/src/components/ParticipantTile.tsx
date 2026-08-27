@@ -1,0 +1,101 @@
+import {
+  CellSignalMedium,
+  Microphone,
+  MicrophoneSlash,
+  MonitorArrowUp,
+  VideoCamera,
+} from '@phosphor-icons/react'
+import { Participant, Track } from 'livekit-client'
+import { cn } from '@/lib/utils'
+import { initials } from '@/lib/names'
+import { Video } from '@/components/Video'
+
+export interface TileState {
+  name: string
+  role?: string
+  speaking: boolean
+  muted: boolean
+  poor: boolean
+  cameraOn: boolean
+  screenSharing: boolean
+}
+
+// Плитка участника: аудио (инициалы + состояние) или камера (видео + полоса).
+// Размер плитки не меняется при включении камеры — сетка не прыгает.
+export function ParticipantTile({
+  participant,
+  isLocal,
+  state,
+}: {
+  participant?: Participant
+  isLocal?: boolean
+  state: TileState
+}) {
+  const { name, role, speaking, muted, poor, cameraOn, screenSharing } = state
+  const camera = cameraOn && participant
+
+  return (
+    <div
+      className={cn(
+        'relative aspect-[16/9] w-full max-w-[50cqw] overflow-hidden rounded-md bg-card shadow-sm',
+        camera ? 'bg-muted' : 'flex flex-col items-center justify-center gap-2 p-3',
+        speaking && 'shadow-[0_0_0_1px_var(--speaking),0_0_0_5px_var(--accent-900)]',
+      )}
+    >
+      {camera ? (
+        <>
+          <Video
+            participant={participant}
+            source={Track.Source.Camera}
+            muted={isLocal}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 bg-background px-3 py-2">
+            <div className="flex min-w-0 items-center gap-3">
+              <VideoCamera weight="fill" className="h-[13px] w-[13px] flex-none text-accent-300" />
+              <span className="truncate text-[12px] font-medium">{name}</span>
+            </div>
+            {muted ? (
+              <MicrophoneSlash className="h-[13px] w-[13px] flex-none text-neutral-600" />
+            ) : (
+              <Microphone className="h-[13px] w-[13px] flex-none text-neutral-500" />
+            )}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="flex h-[60px] w-[60px] flex-none items-center justify-center rounded-full bg-secondary text-[18px] font-medium text-secondary-foreground">
+            {initials(name)}
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <span className="max-w-full truncate text-[15px] font-medium">{name}</span>
+            {role && <span className="font-mono text-[10px] text-neutral-600">{role}</span>}
+          </div>
+          <div className="flex h-3 items-center gap-2">
+            {speaking ? (
+              <div className="flex h-3 items-end gap-[3px]">
+                <span className="h-3 w-[3px] origin-bottom animate-speak-1 rounded-sm bg-speaking" />
+                <span className="h-3 w-[3px] origin-bottom animate-speak-2 rounded-sm bg-speaking" />
+                <span className="h-3 w-[3px] origin-bottom animate-speak-3 rounded-sm bg-speaking" />
+              </div>
+            ) : poor ? (
+              <>
+                <CellSignalMedium className="h-[14px] w-[14px] text-warn" />
+                <span className="font-mono text-[10px]">плохая связь</span>
+              </>
+            ) : screenSharing ? (
+              <>
+                <MonitorArrowUp className="h-[14px] w-[14px] text-accent-300" />
+                <span className="font-mono text-[10px]">экран</span>
+              </>
+            ) : muted ? (
+              <MicrophoneSlash className="h-[14px] w-[14px] text-neutral-600" />
+            ) : (
+              <Microphone className="h-[14px] w-[14px] text-neutral-500" />
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}

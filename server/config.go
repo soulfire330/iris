@@ -30,6 +30,7 @@ type LiveKitCfg struct {
 type Employee struct {
 	Login        string `yaml:"login"`
 	Name         string `yaml:"name"`
+	Role         string `yaml:"role"`
 	PasswordHash string `yaml:"password_hash"`
 }
 

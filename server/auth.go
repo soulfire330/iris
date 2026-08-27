@@ -24,6 +24,7 @@ type loginResp struct {
 	Token   string `json:"token"`
 	Room    string `json:"room"`
 	Name    string `json:"name"`
+	Role    string `json:"role"`
 	Avatar  string `json:"avatar_seed"`
 	TokenTTL int   `json:"token_ttl_sec"`
 }
@@ -61,7 +62,7 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := a.LiveKitToken(emp.Login, emp.Name, seed)
+	token, err := a.LiveKitToken(emp.Login, emp.Name, seed, emp.Role)
 	if err != nil {
 		log.Printf("token: %v", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "не удалось выдать токен"})
@@ -69,10 +70,11 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, loginResp{
-		Token:   token,
-		Room:    a.cfg.Server.Room,
-		Name:    emp.Name,
-		Avatar:  seed,
+		Token:    token,
+		Room:     a.cfg.Server.Room,
+		Name:     emp.Name,
+		Role:     emp.Role,
+		Avatar:   seed,
 		TokenTTL: int((6 * time.Hour).Seconds()),
 	})
 }

@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/nocturne-09cfb4d9-8f28-4513-b343-b6fdce71b088/styles.css" />
+<script src="_ds/nocturne-09cfb4d9-8f28-4513-b343-b6fdce71b088/_ds_bundle.js"></script>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css" />
+<style>
+  html, body { margin: 0; padding: 0; background: var(--color-bg); }
+  * { box-sizing: border-box; }
+  a { color: var(--color-accent); text-decoration: none; }
+  a:hover { color: var(--color-accent-400); }
+  @keyframes vh-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  @keyframes vh-b1 { 0%, 100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
+  @keyframes vh-b2 { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.45); } }
+  @keyframes vh-b3 { 0%, 100% { transform: scaleY(0.55); } 50% { transform: scaleY(0.9); } }
+</style>
+</helmet>
+
+<div style="background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;padding:64px 40px 120px;text-wrap:pretty">
+<div style="max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:88px">
+
+  <header style="display:flex;flex-direction:column;gap:var(--space-6);max-width:70ch">
+    <div style="display:flex;align-items:center;gap:var(--space-3);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--color-neutral-500)">
+      <i class="ph-fill ph-broadcast" style="font-size:15px;color:var(--color-accent)"></i>
+      <span>Iris · дизайн-язык · на базе Nocturne</span>
+    </div>
+    <h1 style="margin:0;font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:46px;line-height:1.1;letter-spacing:-0.02em">Iris — одна комната, которая не просит внимания</h1>
+    <p style="margin:0;font-size:17px;line-height:1.55;color:var(--color-neutral-400)">Iris поднимается за две минуты и дальше работает сам. Интерфейс держится той же логики: нет регистрации, нет навигации, нет настроек на первом экране — только люди в комнате и то, что происходит со звуком прямо сейчас. Тихий графитовый фон, присутствие людей передаётся светом и движением, а не цветными плашками.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:var(--space-2);margin-top:var(--space-2)">
+      <span class="tag tag-outline">графитовый ground #161826</span>
+      <span class="tag tag-outline">акцент — линия и свечение</span>
+      <span class="tag tag-outline">радиус 8px</span>
+      <span class="tag tag-outline">без градиентов</span>
+      <span class="tag tag-outline">light / dark равноправно</span>
+    </div>
+  </header>
+
+  <section style="display:flex;flex-direction:column;gap:var(--space-8)">
+    <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--color-neutral-600)">01 — комната</span>
+      <h2 style="margin:0;font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:28px;letter-spacing:-0.01em">Обычная вкладка браузера, ничего рядом</h2>
+      <p style="margin:0;max-width:66ch;color:var(--color-neutral-400)">Iris — веб-интерфейс на весь вьюпорт: одна вкладка, никакого плавающего окошка и трея. Ниже — то же окно в натуральной высоте рабочего ноутбука (737px под шапкой браузера); по ширине оно тянется, как настоящее. Скролла нет: комната всегда занимает экран целиком, а плитки тянутся по высоте под то, сколько людей в комнате.</p>
+    </div>
+
+    <x-import component-from-global-scope="ChromeWindow" from="./browser-window.jsx" width="100%" height="737px" url="iris.corp.local" tabs="{{ tabs }}" hint-size="100%,737px">
+    <div style="height:100%;display:flex;flex-direction:column;background:var(--color-bg);font-family:var(--font-body);color:var(--color-text)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-6);padding:var(--space-4) var(--space-6);background:var(--color-surface);border-bottom:1px solid var(--color-neutral-800)">
+        <div style="display:flex;align-items:center;gap:var(--space-4);min-width:0">
+          <div style="width:22px;height:22px;border-radius:var(--radius-sm);border:1px solid var(--color-accent);display:flex;align-items:center;justify-content:center;flex:none">
+            <i class="ph-fill ph-broadcast" style="font-size:12px;color:var(--color-accent)"></i>
+          </div>
+          <span style="font-family:var(--font-heading);font-weight:500;font-size:14px">Iris · общая комната</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--color-neutral-600)">6 в комнате · 01:42:07</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:var(--space-4)">
+          <div style="display:flex;align-items:center;gap:var(--space-2);padding:var(--space-1) var(--space-3);border-radius:999px;border:1px solid oklch(0.62 0.16 25 / 0.55);color:oklch(0.75 0.14 25)">
+            <span style="width:6px;height:6px;border-radius:50%;background:oklch(0.62 0.16 25);animation:vh-pulse 1.8s ease-in-out infinite"></span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase">запись</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:var(--space-2);padding:var(--space-1) var(--space-3);border-radius:999px;border:1px solid oklch(0.72 0.10 195 / 0.5);color:oklch(0.80 0.09 195)">
+            <i class="ph ph-sparkle" style="font-size:12px"></i>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase">секретарь</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 300px;flex:1;min-height:0">
+        <div style="padding:var(--space-8);display:flex;flex-direction:column;gap:var(--space-6)">
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));flex:1;min-height:0;gap:var(--space-4);place-content:center;justify-items:center">
+
+            <div style="position:relative;background:var(--color-surface);border-radius:var(--radius-md);width:100%;max-width:540px;aspect-ratio:16/9;padding:var(--space-5);display:flex;flex-direction:column;justify-content:center;align-items:center;gap:var(--space-3);box-shadow:0 0 0 1px var(--color-accent), 0 0 0 5px var(--color-accent-900)">
+              <div style="width:60px;height:60px;border-radius:50%;background:var(--color-accent-800);color:var(--color-accent-200);display:flex;align-items:center;justify-content:center;font-family:var(--font-heading);font-weight:500;font-size:18px">АК</div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:var(--space-1)">
+                <span style="font-size:15px;font-weight:500">Антон К.</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--color-neutral-600)">backend</span>
+              </div>
+              <div style="display:flex;align-items:flex-end;gap:3px;height:12px">
+                <span style="width:3px;height:12px;border-radius:2px;background:var(--color-accent);transform-origin:bottom;animation:vh-b1 0.9s ease-in-out infinite"></span>
+                <span style="width:3px;height:12px;border-radius:2px;background:var(--color-accent);transform-origin:bottom;animation:vh-b2 0.9s ease-in-out infinite"></span>
+                <span style="width:3px;height:12px;border-radius:2px;background:var(--color-accent);transform-origin:bottom;animation:vh-b3 0.9s ease-in-out infinite"></span>
+              </div>
+            </div>
+
+            <div style="position:relative;background:var(--color-neutral-900);border-radius:var(--radius-md);width:100%;max-width:540px;aspect-ratio:16/9;overflow:hidden;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;justify-content:flex-end">
+              <div style="position:absolute;inset:0;background:repeating-linear-gradient(135deg, var(--color-neutral-800) 0 6px, var(--color-neutral-900) 6px 12px);opacity:0.5"></div>
+              <span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.08em;color:var(--color-neutral-600)">видеопоток</span>
+              <div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);padding:var(--space-3) var(--space-4);background:var(--color-bg)">
+                <div style="display:flex;align-items:center;gap:var(--space-3);min-width:0">
+                  <i class="ph-fill ph-video-camera" style="font-size:13px;color:var(--color-accent-300);flex:none"></i>
+                  <span style="font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Марина Д.</span>
+                </div>
+                <i class="ph ph-microphone-slash" style="font-size:13px;color:var(--color-neutral-600);flex:none"></i>
+              </div>
+            </div>
+
+            <div style="position:relative;background:var(--color-surface);border-radius:var(--radius-md);width:100%;max-width:540px;aspect-ratio:16/9;padding:var(--space-5);display:flex;flex-direction:column;justify-content:center;align-items:center;gap:var(--space-3);box-shadow:var(--shadow-sm)">
+              <div style="width:60px;height:60px;border-radius:50%;background:var(--color-neutral-800);color:var(--color-neutral-300);display:flex;align-items:center;justify-content:center;font-family:var(--font-heading);font-weight:500;font-size:18px">СП</div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:var(--space-1)">
+                <span style="font-size:15px;font-weight:500">Сергей П.</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--color-neutral-600)">devops</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:var(--space-2);color:oklch(0.78 0.12 75)">
+                <i class="ph ph-cell-signal-medium" style="font-size:14px"></i>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px">плохая связь</span>
+              </div>
+            </div>
+
+            <div style="position:relative;background:var(--color-surface);border-radius:var(--radius-md);width:100%;max-width:540px;aspect-ratio:16/9;padding:var(--space-5);display:flex;flex-direction:column;justify-content:center;align-items:center;gap:var(--space-3);box-shadow:var(--shadow-sm)">
+              <div style="width:60px;height:60px;border-radius:50%;background:var(--color-neutral-800);color:var(--color-neutral-300);display:flex;align-items:center;justify-content:center;font-family:var(--font-heading);font-weight:500;font-size:18px">ИЛ</div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:var(--space-1)">
+                <span style="font-size:15px;font-weight:500">Игорь Л.</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--color-neutral-600)">qa</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:var(--space-2);color:var(--color-accent-300)">
+                <i class="ph ph-monitor-arrow-up" style="font-size:14px"></i>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px">экран</span>
+              </div>
+            </div>
+
+            <div style="position:relative;background:var(--color-surface);border-radius:var(--radius-md);width:100%;max-width:540px;aspect-ratio:16/9;padding:var(--space-5);display:flex;flex-direction:column;justify-content:center;align-items:center;gap:var(--space-3);box-shadow:var(--shadow-sm)">
+              <div style="width:60px;height:60px;border-radius:50%;background:var(--color-neutral-800);color:var(--color-neutral-300);display:flex;align-items:center;justify-content:center;font-family:var(--font-heading);font-weight:500;font-size:18px">ЕВ</div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:var(--space-1)">
+                <span style="font-size:15px;font-weight:500">Елена В.</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--color-neutral-600)">product</span>
+              </div>
+              <i class="ph ph-microphone" style="font-size:14px;color:var(--color-neutral-500)"></i>
+            </div>
+
+            <div style="position:relative;background:var(--color-surface);border-radius:var(--radius-md);width:100%;max-width:540px;aspect-ratio:16/9;padding:var(--space-5);display:flex;flex-direction:column;justify-content:center;align-items:center;gap:var(--space-3);box-shadow:var(--shadow-sm)">
+              <div style="width:60px;height:60px;border-radius:50%;background:var(--color-neutral-800);color:var(--color-neutral-300);display:flex;align-items:center;justify-content:center;font-family:var(--font-heading);font-weight:500;font-size:18px">ДШ</div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:var(--space-1)">
+                <span style="font-size:15px;font-weight:500">Дмитрий Ш.</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--color-neutral-600)">backend</span>
+              </div>
+              <i class="ph ph-microphone" style="font-size:14px;color:var(--color-neutral-500)"></i>
+            </div>
+
+          </div>
+
+          <div style="margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:var(--space-6);padding:var(--space-4);border-radius:var(--radius-md);background:var(--color-surface);box-shadow:var(--shadow-sm)">
+            <div style="display:flex;align-items:center;gap:var(--space-3)">
+              <button class="btn btn-primary" style="display:flex;align-items:center;gap:var(--space-2)"><i class="ph-fill ph-microphone" style="font-size:15px"></i><span>Микрофон</span></button>
+              <button class="btn btn-ghost btn-icon" aria-label="Наушники"><i class="ph ph-headphones" style="font-size:15px"></i></button>
+              <button class="btn btn-ghost btn-icon" aria-label="Показать экран"><i class="ph ph-monitor-arrow-up" style="font-size:15px"></i></button>
+              <button class="btn btn-ghost btn-icon" aria-label="Включить камеру"><i class="ph ph-video-camera" style="font-size:15px"></i></button>
+            </div>
+            <div style="display:flex;align-items:center;gap:var(--space-3)">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--color-neutral-600)">docker · self-hosted</span>
+              <button class="btn btn-secondary" style="display:flex;align-items:center;gap:var(--space-2);border-color:oklch(0.62 0.16 25 / 0.6);color:oklch(0.80 0.12 25)"><i class="ph ph-sign-out" style="font-size:15px"></i><span>Выйти</span></button>
+            </div>
+          </div>
+        </div>
+
+        <aside style="border-left:1px solid var(--color-neutral-800);background:var(--color-surface);display:flex;flex-direction:column">
+          <div style="display:flex;border-bottom:1px solid var(--color-neutral-800);flex:none">
+            <button style="flex:1;display:flex;align-items:center;justify-content:center;gap:var(--space-2);padding:var(--space-4);background:transparent;border:none;border-bottom:1px solid oklch(0.72 0.10 195);color:var(--color-text);font-family:var(--font-body);font-size:12px;font-weight:500;cursor:pointer">
+              <i class="ph ph-sparkle" style="font-size:13px;color:oklch(0.78 0.10 195)"></i><span>Сводки</span>
+            </button>
+            <button style="flex:1;display:flex;align-items:center;justify-content:center;gap:var(--space-2);padding:var(--space-4);background:transparent;border:none;border-bottom:1px solid transparent;color:var(--color-neutral-500);font-family:var(--font-body);font-size:12px;cursor:pointer" style-hover="color:var(--color-neutral-300)">
+              <i class="ph ph-chat-teardrop-text" style="font-size:13px"></i><span>Чат</span>
+              <span style="min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--color-accent-800);color:var(--color-accent-200);font-family:'JetBrains Mono',monospace;font-size:9px;display:flex;align-items:center;justify-content:center">3</span>
+            </button>
+          </div>
+
+          <div style="padding:var(--space-6);display:flex;flex-direction:column;gap:var(--space-6);flex:1;min-height:0">
+            <p style="margin:0;font-size:12px;line-height:1.5;color:var(--color-neutral-500)">Секретарь пишет встречу и присылает сводку в чат комнаты после того, как вышел последний участник. По ходу разговора он молчит.</p>
+
+            <div style="display:flex;flex-direction:column;gap:var(--space-4)">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-neutral-600)">прошлые встречи</span>
+
+              <div style="display:flex;flex-direction:column;gap:var(--space-3);padding-left:var(--space-4);border-left:1px solid oklch(0.72 0.10 195 / 0.35)">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-3)">
+                  <span style="font-size:12px;font-weight:500">Вчера, 10:00</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--color-neutral-600)">54 мин · 6</span>
+                </div>
+                <span style="font-size:12px;line-height:1.5;color:var(--color-neutral-300)">Релиз хаба катим в пятницу, откат — на прошлый тег. Список сотрудников переносим в users.yml, без миграций.</span>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:var(--space-3);padding-left:var(--space-4);border-left:1px solid var(--color-neutral-800)">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-3)">
+                  <span style="font-size:12px;font-weight:500">Пн, 16:30</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--color-neutral-600)">22 мин · 4</span>
+                </div>
+                <span style="font-size:12px;line-height:1.5;color:var(--color-neutral-300)">STUN за корпоративным NAT падает — Сергей поднимает свой TURN.</span>
+              </div>
+            </div>
+
+            <button class="btn btn-ghost btn-block" style="margin-top:auto;display:flex;align-items:center;justify-content:center;gap:var(--space-2);font-size:12px"><i class="ph ph-file-text" style="font-size:14px"></i><span>Все сводки</span></button>
+          </div>
+        </aside>
+      </div>
+    </div>
+    </x-import>
+    <p style="margin:0;max-width:66ch;font-size:13px;color:var(--color-neutral-600)">Справа одна колонка на две вкладки: сводки прошлых встреч и чат комнаты. Второй цвет живёт только здесь — всё остальное говорит нейтралями и одним акцентом. В сетке только те, кто в комнате: вышел — плитка исчезла, список сотрудников из конфига интерфейсу не нужен.</p>
+
+    <div style="display:flex;flex-direction:column;gap:var(--space-5);padding-top:var(--space-4)">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-neutral-600)">размер плитки от числа людей</span>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-6)">
+
+        <div style="display:flex;flex-direction:column;gap:var(--space-3)">
+          <div style="aspect-ratio:16/9;border-radius:var(--radius-sm);background:var(--color-neutral-900);box-shadow:var(--shadow-sm);padding:8px;display:grid;grid-template-columns:1fr;place-content:center;justify-items:center;gap:6px">
+            <div style="width:100%;max-width:50%;aspect-ratio:16/9;border-radius:3px;background:var(--color-accent-800)"></div>
+          </div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--color-neutral-500)">1 · ½ ширины сцены</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:var(--space-3)">
+          <div style="aspect-ratio:16/9;border-radius:var(--radius-sm);background:var(--color-neutral-900);box-shadow:var(--shadow-sm);padding:8px;display:grid;grid-template-columns:repeat(2,1fr);place-content:center;justify-items:center;gap:6px">
+            <div style="width:100%;aspect-ratio:16/9;border-radius:3px;background:var(--color-accent-800)"></div>
+            <div style="width:100%;aspect-ratio:16/9;border-radius:3px;background:var(--color-neutral-800)"></div>
+          </div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--color-neutral-500)">2 · две колонки, кап держит</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:var(--space-3)">
+          <div style="aspect-ratio:16/9;border-radius:var(--radius-sm);background:var(--color-neutral-900);box-shadow:var(--shadow-sm);padding:8px;display:grid;grid-template-columns:repeat(2,1fr);place-content:center;justify-items:center;gap:6px">
+            <div style="width:100%;aspect-ratio:16/9;border-radius:3px;background:var(--color-accent-800)"></div>
+            <div style="width:100%;aspect-ratio:16/9;border-radius:3px;background:var(--color-neutral-800)"></div>
+            <div style="width:100%;aspect-ratio:16/9;border-radius:3px;background:var(--color-neutral-800)"></div>
+            <div style="width:100%;aspect-ratio:16/9;border-radius:3px;background:var(--color-neutral-800)"></div>
+          </div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--color-neutral-500)">3—4 · 2×2</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:var(--space-3)">
+          <div style="aspect-ratio:16/9;border-radius:var(--radius-sm);background:var(--color-neutral-900);box-shadow:var(--shadow-sm);padding:8px;display:grid;grid-template-columns:repeat(3,1fr);place-content:center;justify-items:center;gap:5px">
+            <div style="width:100%;aspect-ratio:16/9;border-radius:3px;background:var(--color-accent-800)"></div>
+            <div style="width:100%;aspect-ratio:16/9;border-radius:3px;background:var(--color-neutral-800)"></div>
+            <div style="width:100%;aspect-ratio:16/9;border-radius:3px;background:var(--color-neutral-800)"></div>
+            <div style="width:100%;aspect-ratio:16/9;border-radius:3px;background:var(--color-neutral-800)"></div>
+            <div style="width:100%;aspect-ratio:16/9;border-radius:3px;background:var(--color-neutral-800)"></div>
+            <div style="width:100%;aspect-ratio:16/9;border-radius:3px;background:var(--color-neutral-800)"></div>
+          </div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--color-neutral-500)">5—6 · три колонки</span>
+        </div>
+
+      </div>
+      <p style="margin:0;max-width:74ch;font-size:13px;line-height:1.6;color:var(--color-neutral-400)">Плитка всегда 16:9 — та же геометрия, что у вебки и у шаринга, поток встаёт в неё без полей. Число колонок растёт по числу людей, плитки сами разъезжаются шире; ширина одной упирается в половину сцены, дальше сетка перестаёт расти и центрируется, свободное место остаётся полем вокруг, а не пустотой внутри плиток.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-8);padding-top:var(--space-6)">
+      <div style="display:flex;flex-direction:column;gap:var(--space-3)">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-neutral-600)">место на экране</span>
+        <p style="margin:0;font-size:13px;line-height:1.6;color:var(--color-neutral-400)">100% вьюпорта вкладки, фон — <code style="font-family:'JetBrains Mono',monospace;font-size:11px">--color-bg</code> до краёв. Ни модалок поверх, ни центрированной «карточки приложения» с полями по бокам: на 1440×900 сетка получает примерно 1130×640 и раскладывает в нём шесть плиток 16:9 по 360×202 — по центру, без скролла и без сжатия панели.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:var(--space-3)">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-neutral-600)">узкие окна</span>
+        <p style="margin:0;font-size:13px;line-height:1.6;color:var(--color-neutral-400)">Ниже 1180px правая колонка уезжает за кнопку, сетка идёт в две колонки. Ниже 900px — в одну, панель звонка прилипает к низу. Минимум 720px по ширине; ниже показываем только панель звонка и говорящего.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:var(--space-3)">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-neutral-600)">когда вкладка не активна</span>
+        <p style="margin:0;font-size:13px;line-height:1.6;color:var(--color-neutral-400)">Звук продолжает идти, интерфейса не видно. Состояние выносится в заголовок вкладки и фавикон: точка записи, число людей в комнате. Иконки в доке у Iris нет — это не приложение, а адрес.</p>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:var(--space-8)">
+    <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--color-neutral-600)">02 — просмотр экрана</span>
+      <h2 style="margin:0;font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:28px;letter-spacing:-0.01em">Когда кто-то показывает экран</h2>
+      <p style="margin:0;max-width:66ch;color:var(--color-neutral-400)">Экран занимает всё место, сетка сворачивается в рельс справа — та же плитка, только в строку. Панель звонка не меняется, добавляется одна кнопка. Комната остаётся одна: это не новый экран, а другая раскладка того же.</p>
+    </div>
+
+    <div style="border-radius:var(--radius-lg);box-shadow:var(--shadow-md);background:var(--color-bg);overflow:hidden;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-6);padding:var(--space-4) var(--space-6);background:var(--color-surface);border-bottom:1px solid var(--color-neutral-800)">
+        <div style="display:flex;align-items:center;gap:var(--space-4);min-width:0">
+          <div style="width:22px;height:22px;border-radius:var(--radius-sm);border:1px solid var(--color-accent);display:flex;align-items:center;justify-content:center;flex:none">
+            <i class="ph-fill ph-broadcast" style="font-size:12px;color:var(--color-accent)"></i>
+          </div>
+          <span style="font-family:var(--font-heading);font-weight:500;font-size:14px">Iris · общая комната</span>
+          <div style="display:flex;align-items:center;gap:var(--space-2);padding:var(--space-1) var(--space-3);border-radius:999px;border:1px solid var(--color-accent-700);color:var(--color-accent-300)">
+            <i class="ph ph-monitor-arrow-up" style="font-size:12px"></i>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.06em">экран Игоря Л.</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:var(--space-2);padding:var(--space-1) var(--space-3);border-radius:999px;border:1px solid oklch(0.62 0.16 25 / 0.55);color:oklch(0.75 0.14 25)">
+          <span style="width:6px;height:6px;border-radius:50%;background:oklch(0.62 0.16 25);animation:vh-pulse 1.8s ease-in-out infinite"></span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase">запись</span>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 208px;min-height:440px">
+        <div style="padding:var(--space-6);display:flex;flex-direction:column;gap:var(--space-6)">
+          <div style="position:relative;flex:1;border-radius:var(--radius-md);background:var(--color-neutral-900);box-shadow:var(--shadow-sm);overflow:hidden;min-height:300px">
+            <div style="position:absolute;inset:0;background:repeating-linear-gradient(135deg, var(--color-neutral-800) 0 8px, var(--color-neutral-900) 8px 16px);opacity:0.45"></div>
+            <span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.08em;color:var(--color-neutral-600)">поток экрана 1920×1080</span>
+            <div style="position:absolute;left:var(--space-4);bottom:var(--space-4);display:flex;align-items:center;gap:var(--space-3);padding:var(--space-2) var(--space-4);border-radius:999px;background:var(--color-bg);box-shadow:var(--shadow-sm)">
+              <div style="display:flex;align-items:flex-end;gap:3px;height:10px">
+                <span style="width:3px;height:10px;border-radius:2px;background:var(--color-accent);transform-origin:bottom;animation:vh-b1 0.9s ease-in-out infinite"></span>
+                <span style="width:3px;height:10px;border-radius:2px;background:var(--color-accent);transform-origin:bottom;animation:vh-b3 0.9s ease-in-out infinite"></span>
+                <span style="width:3px;height:10px;border-radius:2px;background:var(--color-accent);transform-origin:bottom;animation:vh-b2 0.9s ease-in-out infinite"></span>
+              </div>
+              <span style="font-size:12px;font-weight:500">Игорь Л. говорит</span>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-6);padding:var(--space-4);border-radius:var(--radius-md);background:var(--color-surface);box-shadow:var(--shadow-sm)">
+            <div style="display:flex;align-items:center;gap:var(--space-3)">
+              <button class="btn btn-primary" style="display:flex;align-items:center;gap:var(--space-2)"><i class="ph-fill ph-microphone" style="font-size:15px"></i><span>Микрофон</span></button>
+              <button class="btn btn-ghost btn-icon" aria-label="Наушники"><i class="ph ph-headphones" style="font-size:15px"></i></button>
+              <button class="btn btn-ghost btn-icon" aria-label="Включить камеру"><i class="ph ph-video-camera" style="font-size:15px"></i></button>
+              <button class="btn btn-ghost" style="display:flex;align-items:center;gap:var(--space-2);font-size:12px"><i class="ph ph-corners-out" style="font-size:15px"></i><span>Во весь экран</span></button>
+            </div>
+            <button class="btn btn-secondary" style="display:flex;align-items:center;gap:var(--space-2);font-size:12px"><i class="ph ph-x" style="font-size:15px"></i><span>Свернуть показ</span></button>
+          </div>
+        </div>
+
+        <div style="border-left:1px solid var(--color-neutral-800);background:var(--color-surface);padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-2)">
+          <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3);border-radius:var(--radius-sm);box-shadow:0 0 0 1px var(--color-accent)">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--color-accent-800);color:var(--color-accent-200);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex:none">ИЛ</div>
+            <span style="font-size:12px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Игорь Л.</span>
+            <i class="ph ph-monitor-arrow-up" style="font-size:13px;color:var(--color-accent-300);flex:none"></i>
+          </div>
+          <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3)">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--color-neutral-800);color:var(--color-neutral-300);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex:none">АК</div>
+            <span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Антон К.</span>
+            <i class="ph ph-microphone" style="font-size:13px;color:var(--color-neutral-500);flex:none"></i>
+          </div>
+          <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3)">
+            <div style="width:28px;height:28px;border-radius:var(--radius-sm);background:repeating-linear-gradient(135deg, var(--color-neutral-800) 0 4px, var(--color-neutral-900) 4px 8px);flex:none"></div>
+            <span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Марина Д.</span>
+            <i class="ph ph-microphone-slash" style="font-size:13px;color:var(--color-neutral-600);flex:none"></i>
+          </div>
+          <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3)">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--color-neutral-800);color:var(--color-neutral-300);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex:none">СП</div>
+            <span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Сергей П.</span>
+            <i class="ph ph-cell-signal-medium" style="font-size:13px;color:oklch(0.78 0.12 75);flex:none"></i>
+          </div>
+          <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3)">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--color-neutral-800);color:var(--color-neutral-300);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex:none">ЕВ</div>
+            <span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Елена В.</span>
+            <i class="ph ph-microphone" style="font-size:13px;color:var(--color-neutral-500);flex:none"></i>
+          </div>
+          <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3)">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--color-neutral-800);color:var(--color-neutral-300);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex:none">ДШ</div>
+            <span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Дмитрий Ш.</span>
+            <i class="ph ph-microphone" style="font-size:13px;color:var(--color-neutral-500);flex:none"></i>
+          </div>
+          <button class="btn btn-ghost btn-block" style="margin-top:auto;display:flex;align-items:center;justify-content:center;gap:var(--space-2);font-size:12px"><i class="ph ph-sidebar-simple" style="font-size:14px"></i><span>Сводки и чат</span></button>
+        </div>
+      </div>
+    </div>
+    <p style="margin:0;max-width:66ch;font-size:13px;color:var(--color-neutral-600)">Рельс справа вытесняет панель сводок и чата — она уезжает за кнопку внизу. Одновременно на экране только один поток: второй показ забирает место у первого, без выбора «кого смотреть».</p>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:var(--space-8)">
+    <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--color-neutral-600)">03 — состояния</span>
+      <h2 style="margin:0;font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:28px;letter-spacing:-0.01em">Шесть состояний, шесть разных механик</h2>
+      <p style="margin:0;max-width:66ch;color:var(--color-neutral-400)">Ни одно состояние не заливает плитку цветом. Присутствие — это обводка и свет, видео — сама плитка, проблема — янтарная иконка со словами.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-6)">
+      <div class="card">
+        <div class="card-kicker">говорит сейчас</div>
+        <div class="card-title">Обводка акцентом + свечение</div>
+        <div class="card-body">1px <code style="font-family:'JetBrains Mono',monospace;font-size:11px">--color-accent</code> плюс 4px гало из <code style="font-family:'JetBrains Mono',monospace;font-size:11px">--color-accent-900</code>. Три полоски эквалайзера — единственная анимация в сетке.</div>
+      </div>
+      <div class="card">
+        <div class="card-kicker">микрофон выключен</div>
+        <div class="card-title">Иконка, не красный</div>
+        <div class="card-body">Перечёркнутый микрофон в <code style="font-family:'JetBrains Mono',monospace;font-size:11px">--color-neutral-600</code>. Мьют — норма рабочего дня, а не ошибка.</div>
+      </div>
+      <div class="card">
+        <div class="card-kicker">плохая связь</div>
+        <div class="card-title">Янтарная иконка и словами</div>
+        <div class="card-body">Единственный янтарный в системе, <code style="font-family:'JetBrains Mono',monospace;font-size:11px">oklch(0.78 0.12 75)</code>. Без цифр: пинг мы не измеряем — «плохая связь» и есть весь смысл, который у нас есть.</div>
+      </div>
+      <div class="card">
+        <div class="card-kicker">идёт запись</div>
+        <div class="card-title">Пульсирующая точка в шапке</div>
+        <div class="card-body">Красный <code style="font-family:'JetBrains Mono',monospace;font-size:11px">oklch(0.62 0.16 25)</code> живёт только здесь и на кнопке выхода. В сетке участников красного нет.</div>
+      </div>
+      <div class="card">
+        <div class="card-kicker">шеринг экрана</div>
+        <div class="card-title">Светлый шаг акцента</div>
+        <div class="card-body">Иконка монитора в <code style="font-family:'JetBrains Mono',monospace;font-size:11px">--color-accent-300</code>: связано с активностью, но тише, чем речь.</div>
+      </div>
+      <div class="card">
+        <div class="card-kicker">включена камера</div>
+        <div class="card-title">Плитка отдаёт себя видео</div>
+        <div class="card-body">Инициалы уходят, поток занимает всю плитку, имя и микрофон садятся на полосу внизу на <code style="font-family:'JetBrains Mono',monospace;font-size:11px">--color-bg</code>. Размер плитки не меняется — сетка не прыгает.</div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:var(--space-8)">
+    <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--color-neutral-600)">04 — палитра</span>
+      <h2 style="margin:0;font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:28px;letter-spacing:-0.01em">Роли цвета</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-6)">
+      <div style="display:flex;flex-direction:column;gap:var(--space-3)"><div style="height:88px;border-radius:var(--radius-md);background:var(--color-bg);box-shadow:var(--shadow-sm)"></div><span style="font-size:13px;font-weight:500">ground</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--color-neutral-600)">#161826</span></div>
+      <div style="display:flex;flex-direction:column;gap:var(--space-3)"><div style="height:88px;border-radius:var(--radius-md);background:var(--color-surface);box-shadow:var(--shadow-sm)"></div><span style="font-size:13px;font-weight:500">surface</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--color-neutral-600)">#232532</span></div>
+      <div style="display:flex;flex-direction:column;gap:var(--space-3)"><div style="height:88px;border-radius:var(--radius-md);background:var(--color-accent)"></div><span style="font-size:13px;font-weight:500">accent — присутствие</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--color-neutral-600)">#9184d9</span></div>
+      <div style="display:flex;flex-direction:column;gap:var(--space-3)"><div style="height:88px;border-radius:var(--radius-md);background:oklch(0.72 0.10 195)"></div><span style="font-size:13px;font-weight:500">ai — секретарь</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--color-neutral-600)">oklch(0.72 0.10 195)</span></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(9,1fr);gap:var(--space-2)">
+      <div style="height:44px;border-radius:var(--radius-sm);background:var(--color-neutral-100)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:var(--color-neutral-200)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:var(--color-neutral-300)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:var(--color-neutral-400)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:var(--color-neutral-500)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:var(--color-neutral-600)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:var(--color-neutral-700)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:var(--color-neutral-800)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:var(--color-neutral-900)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:var(--color-accent-100)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:var(--color-accent-200)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:var(--color-accent-300)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:var(--color-accent-400)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:var(--color-accent-500)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:var(--color-accent-600)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:var(--color-accent-700)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:var(--color-accent-800)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:var(--color-accent-900)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:oklch(0.93 0.03 195)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:oklch(0.87 0.05 195)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:oklch(0.80 0.08 195)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:oklch(0.76 0.09 195)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:oklch(0.72 0.10 195)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:oklch(0.62 0.09 195)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:oklch(0.50 0.08 195)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:oklch(0.38 0.06 195)"></div>
+      <div style="height:44px;border-radius:var(--radius-sm);background:oklch(0.28 0.04 195)"></div>
+    </div>
+    <p style="margin:0;max-width:74ch;font-size:13px;color:var(--color-neutral-600)">Верхний ряд — нейтрали и акцент Nocturne. Нижний — расширение под AI-секретаря: тот же перцептивный шаг светлоты, hue 195 вместо 289, хрома чуть ниже акцента, чтобы секретарь не спорил с речью. Янтарный и красный — только семантика, ramp им не нужен.</p>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:var(--space-8)">
+    <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--color-neutral-600)">05 — токены</span>
+      <h2 style="margin:0;font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:28px;letter-spacing:-0.01em">CSS-переменные для shadcn</h2>
+      <p style="margin:0;max-width:66ch;color:var(--color-neutral-400)">Копируется в <code style="font-family:'JetBrains Mono',monospace;font-size:12px">app/globals.css</code> как есть. Light — рабочий день у окна, dark — вечер и созвоны; ни один из них не «второй». Радиус 0.5rem совпадает с 8px Nocturne.</p>
+    </div>
+    <pre style="margin:0;padding:var(--space-8);border-radius:var(--radius-md);background:var(--color-neutral-900);box-shadow:var(--shadow-sm);overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.75;color:var(--color-neutral-300)">:root {
+  --radius: 0.5rem;
+
+  --background: #f3f5fe;
+  --foreground: #292b31;
+  --card: #f3f5fe;
+  --card-foreground: #292b31;
+  --popover: #e4e7f5;
+  --popover-foreground: #292b31;
+  --primary: #5d5294;
+  --primary-foreground: #f5f4ff;
+  --secondary: #e4e7f5;
+  --secondary-foreground: #3f424d;
+  --muted: #e4e7f5;
+  --muted-foreground: #595d6c;
+  --accent: #e7e5fe;
+  --accent-foreground: #423a6a;
+  --destructive: oklch(0.55 0.17 25);
+  --destructive-foreground: #f3f5fe;
+  --border: #cfd3e5;
+  --input: #cfd3e5;
+  --ring: #796cbf;
+
+  /* Iris: голос комнаты */
+  --speaking: #5d5294;      /* обводка активного участника */
+  --ai: oklch(0.50 0.08 195);   /* AI-секретарь */
+  --warn: oklch(0.62 0.13 75);  /* плохая связь */
+  --recording: oklch(0.55 0.17 25);
+}
+
+.dark {
+  --background: #161826;
+  --foreground: #e9e9ed;
+  --card: #232532;
+  --card-foreground: #e9e9ed;
+  --popover: #292b31;
+  --popover-foreground: #e9e9ed;
+  --primary: #9184d9;
+  --primary-foreground: #2b2741;
+  --secondary: #292b31;
+  --secondary-foreground: #cfd3e5;
+  --muted: #292b31;
+  --muted-foreground: #9397ab;
+  --accent: #2b2741;
+  --accent-foreground: #d2cefd;
+  --destructive: oklch(0.62 0.16 25);
+  --destructive-foreground: #f3f5fe;
+  --border: #3f424d;
+  --input: #3f424d;
+  --ring: #b5abfc;
+
+  --speaking: #9184d9;
+  --ai: oklch(0.72 0.10 195);
+  --warn: oklch(0.78 0.12 75);
+  --recording: oklch(0.62 0.16 25);
+}</pre>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:var(--space-8)">
+      <div style="display:flex;flex-direction:column;gap:var(--space-4)">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-neutral-600)">компоненты shadcn</span>
+        <p style="margin:0;font-size:13px;line-height:1.6;color:var(--color-neutral-400)">Button — вариант <code style="font-family:'JetBrains Mono',monospace;font-size:11px">outline</code> по умолчанию, <code style="font-family:'JetBrains Mono',monospace;font-size:11px">default</code> только для входа в комнату и микрофона. Badge — для состояний. Card — плитка участника. Sheet справа — панель секретаря. Никаких Dialog поверх активного звонка: подтверждения живут в Popover у самой кнопки.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:var(--space-4)">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-neutral-600)">типографика и плотность</span>
+        <p style="margin:0;font-size:13px;line-height:1.6;color:var(--color-neutral-400)">Inter 400/500, заголовки не тяжелее 500 — иерархия делается размером и воздухом. Цифры и всё технически проверяемое (пинг, таймер, версия, имена файлов) — JetBrains Mono. Шкала отступов Nocturne 0.7×: интерфейс плотный сознательно, лишний воздух уходит наружу от сетки, а не внутрь плиток.</p>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:grid;grid-template-columns:repeat(2,1fr);gap:var(--space-8);padding-top:var(--space-8);border-top:1px solid var(--color-neutral-800)">
+    <div style="display:flex;flex-direction:column;gap:var(--space-4)">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--color-accent-300)">делать</span>
+      <ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:var(--space-4);font-size:13px;line-height:1.55;color:var(--color-neutral-300)">
+        <li>Держать один экран: комната — это и есть приложение.</li>
+        <li>Показывать состояние там, где оно происходит: у плитки, у кнопки, у панели.</li>
+        <li>Говорить ровно то, что знаем: «плохая связь», а не выдуманные миллисекунды.</li>
+        <li>Анимировать только живое: речь, запись, подключение. Не более трёх движущихся элементов на экране.</li>
+        <li>Показывать только тех, кто в комнате: вышел — плитка исчезла, сетка сжалась.</li>
+      </ul>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:var(--space-4)">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--color-neutral-500)">не делать</span>
+      <ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:var(--space-4);font-size:13px;line-height:1.55;color:var(--color-neutral-300)">
+        <li>Градиенты, стеклянные размытия, цветные заливки плиток.</li>
+        <li>Чистый чёрный и чистый белый — только шаги ramp.</li>
+        <li>Красный для мьюта: выключенный микрофон не авария.</li>
+        <li>Аватарки-эмодзи и иллюстрации присутствия — только инициалы и фото, если их положили в конфиг.</li>
+        <li>Индикаторы «печатает», «прочитано» и прочая телеметрия внимания.</li>
+        <li>Список всех сотрудников в комнате: конфиг — не интерфейс.</li>
+        <li>Экраны онбординга, туры и пустые состояния «начните работу» — продукту нечего объяснять.</li>
+      </ul>
+    </div>
+  </section>
+
+</div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">class Component extends DCLogic {
+  renderVals() {
+    return { tabs: [{ title: "Iris — общая комната" }] };
+  }
+}</script>
+</body>
+</html>

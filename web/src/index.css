@@ -1,111 +1,228 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/inter";
+@import "@fontsource/jetbrains-mono";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Iris — тема по дизайн-хэндоффу (Nocturne). Источник: docs/design_handoff_iris_room */
+
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  --radius: 0.5rem;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 8px;
+  --radius-2xl: 14px;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  /* Iris: голос комнаты */
+  --speaking: #5d5294; /* обводка активного участника */
+  --ai: oklch(0.5 0.08 195); /* AI-секретарь */
+  --warn: oklch(0.62 0.13 75); /* плохая связь */
+  --recording: oklch(0.55 0.17 25);
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* Рампы (OKLCH, общая шкала светлоты) — тема инвариантна */
+  --neutral-100: #f3f5fe;
+  --neutral-200: #e4e7f5;
+  --neutral-300: #cfd3e5;
+  --neutral-400: #b2b6ca;
+  --neutral-500: #9397ab;
+  --neutral-600: #75798c;
+  --neutral-700: #595d6c;
+  --neutral-800: #3f424d;
+  --neutral-900: #292b31;
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
+  --accent-100: #f5f4ff;
+  --accent-200: #e7e5fe;
+  --accent-300: #d2cefd;
+  --accent-400: #b5abfc;
+  --accent-500: #968ae0;
+  --accent-600: #796cbf;
+  --accent-700: #5d5294;
+  --accent-800: #423a6a;
+  --accent-900: #2b2741;
+
+  --ai-100: oklch(0.93 0.03 195);
+  --ai-200: oklch(0.87 0.05 195);
+  --ai-300: oklch(0.8 0.08 195);
+  --ai-400: oklch(0.76 0.09 195);
+  --ai-500: oklch(0.72 0.1 195);
+  --ai-600: oklch(0.62 0.09 195);
+  --ai-700: oklch(0.5 0.08 195);
+  --ai-800: oklch(0.38 0.06 195);
+  --ai-900: oklch(0.28 0.04 195);
+}
+
+.dark {
+  color-scheme: dark;
+
+  --background: #161826;
+  --foreground: #e9e9ed;
+  --card: #232532;
+  --card-foreground: #e9e9ed;
+  --popover: #292b31;
+  --popover-foreground: #e9e9ed;
+  --primary: #9184d9;
+  --primary-foreground: #2b2741;
+  --secondary: #292b31;
+  --secondary-foreground: #cfd3e5;
+  --muted: #292b31;
+  --muted-foreground: #9397ab;
+  --accent: #2b2741;
+  --accent-foreground: #d2cefd;
+  --destructive: oklch(0.62 0.16 25);
+  --destructive-foreground: #f3f5fe;
+  --border: #3f424d;
+  --input: #3f424d;
+  --ring: #b5abfc;
+
+  --speaking: #9184d9;
+  --ai: oklch(0.72 0.1 195);
+  --warn: oklch(0.78 0.12 75);
+  --recording: oklch(0.62 0.16 25);
+
+  --shadow-sm: 0 0 0 1px #3f424d;
+  --shadow-md: 0 0 0 1px #595d6c, 0 6px 18px rgb(0 0 0 / 0.55);
+  --shadow-lg: 0 0 0 1px #9397ab, 0 16px 40px rgb(0 0 0 / 0.65);
+}
+
+.light {
+  color-scheme: light;
+
+  --background: #f3f5fe;
+  --foreground: #292b31;
+  --card: #f3f5fe;
+  --card-foreground: #292b31;
+  --popover: #e4e7f5;
+  --popover-foreground: #292b31;
+  --primary: #5d5294;
+  --primary-foreground: #f5f4ff;
+  --secondary: #e4e7f5;
+  --secondary-foreground: #3f424d;
+  --muted: #e4e7f5;
+  --muted-foreground: #595d6c;
+  --accent: #e7e5fe;
+  --accent-foreground: #423a6a;
+  --destructive: oklch(0.55 0.17 25);
+  --destructive-foreground: #f3f5fe;
+  --border: #cfd3e5;
+  --input: #cfd3e5;
+  --ring: #796cbf;
+
+  --speaking: #5d5294;
+  --ai: oklch(0.5 0.08 195);
+  --warn: oklch(0.62 0.13 75);
+  --recording: oklch(0.55 0.17 25);
+
+  --shadow-sm: 0 0 0 1px #cfd3e5;
+  --shadow-md: 0 0 0 1px #b2b6ca, 0 6px 18px rgb(22 24 38 / 0.12);
+  --shadow-lg: 0 0 0 1px #9397ab, 0 16px 40px rgb(22 24 38 / 0.18);
+}
+
+@theme inline {
+  --font-sans: "Inter Variable", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-speaking: var(--speaking);
+  --color-ai: var(--ai);
+  --color-warn: var(--warn);
+  --color-recording: var(--recording);
+
+  --color-neutral-100: var(--neutral-100);
+  --color-neutral-200: var(--neutral-200);
+  --color-neutral-300: var(--neutral-300);
+  --color-neutral-400: var(--neutral-400);
+  --color-neutral-500: var(--neutral-500);
+  --color-neutral-600: var(--neutral-600);
+  --color-neutral-700: var(--neutral-700);
+  --color-neutral-800: var(--neutral-800);
+  --color-neutral-900: var(--neutral-900);
+
+  --color-accent-100: var(--accent-100);
+  --color-accent-200: var(--accent-200);
+  --color-accent-300: var(--accent-300);
+  --color-accent-400: var(--accent-400);
+  --color-accent-500: var(--accent-500);
+  --color-accent-600: var(--accent-600);
+  --color-accent-700: var(--accent-700);
+  --color-accent-800: var(--accent-800);
+  --color-accent-900: var(--accent-900);
+
+  --color-ai-100: var(--ai-100);
+  --color-ai-200: var(--ai-200);
+  --color-ai-300: var(--ai-300);
+  --color-ai-400: var(--ai-400);
+  --color-ai-500: var(--ai-500);
+  --color-ai-600: var(--ai-600);
+  --color-ai-700: var(--ai-700);
+  --color-ai-800: var(--ai-800);
+  --color-ai-900: var(--ai-900);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+
+  --animate-speak-1: speak1 0.9s ease-in-out infinite;
+  --animate-speak-2: speak2 0.9s ease-in-out infinite;
+  --animate-speak-3: speak3 0.9s ease-in-out infinite;
+  --animate-rec: rec 1.8s ease-in-out infinite;
+}
+
+@keyframes speak1 {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+@keyframes speak2 {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.45); }
+}
+@keyframes speak3 {
+  0%, 100% { transform: scaleY(0.55); }
+  50% { transform: scaleY(0.9); }
+}
+@keyframes rec {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+  body {
+    @apply bg-background text-foreground;
   }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+  html {
+    @apply font-sans;
   }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-}
-
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 500;
   }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
+  ::selection {
+    background: color-mix(in srgb, var(--accent) 30%, transparent);
   }
-}
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
 }
