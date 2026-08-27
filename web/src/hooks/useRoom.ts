@@ -89,8 +89,6 @@ export function useRoom(token: string, dsp: DSP) {
     // Список говорящих приходит от сервера — он же источник правды и для
     // своей плитки (см. комментарий у setShowing).
     const onSpeakers = (list: Participant[]) => {
-      // ВРЕМЕННО: диагностика залипания индикатора
-      console.log('[speakers] список:', list.map((p) => `${p.identity}:${p.isSpeaking}`))
       const active = new Set(list.map((p) => p.identity))
       for (const id of active) setShowing(id, true)
       for (const [id, visible] of shown.current) {
