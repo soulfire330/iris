@@ -45,11 +45,6 @@ export function ScreenView({
           )}
           {speaker && (
             <div className="absolute bottom-3 left-3 flex items-center gap-3 rounded-full bg-background px-3 py-1.5 shadow-sm">
-              <div className="flex h-[10px] items-end gap-[3px]">
-                <span className="h-[10px] w-[3px] origin-bottom animate-speak-1 rounded-[2px] bg-primary" />
-                <span className="h-[10px] w-[3px] origin-bottom animate-speak-3 rounded-[2px] bg-primary" />
-                <span className="h-[10px] w-[3px] origin-bottom animate-speak-2 rounded-[2px] bg-primary" />
-              </div>
               <span className="text-[12px] font-medium">{speaker.name} говорит</span>
             </div>
           )}
@@ -79,13 +74,7 @@ export function ScreenView({
               </div>
             )}
             <span className="flex-1 truncate text-[12px]">{m.name}</span>
-            {m.speaking ? (
-              <div className="flex h-[10px] flex-none items-end gap-[2px]">
-                <span className="h-[10px] w-[2px] origin-bottom animate-speak-1 rounded-[2px] bg-primary" />
-                <span className="h-[10px] w-[2px] origin-bottom animate-speak-3 rounded-[2px] bg-primary" />
-                <span className="h-[10px] w-[2px] origin-bottom animate-speak-2 rounded-[2px] bg-primary" />
-              </div>
-            ) : m.poor ? (
+            {m.poor ? (
               <CellSignalMedium className="h-[13px] w-[13px] flex-none text-warn" />
             ) : m.screenSharing ? (
               <MonitorArrowUp className="h-[13px] w-[13px] flex-none text-accent-300" />

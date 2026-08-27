@@ -72,13 +72,7 @@ export function ParticipantTile({
             {role && <span className="font-mono text-[10px] text-neutral-600">{role}</span>}
           </div>
           <div className="flex h-3 items-center gap-2">
-            {speaking ? (
-              <div className="flex h-3 items-end gap-[3px]">
-                <span className="h-3 w-[3px] origin-bottom animate-speak-1 rounded-sm bg-speaking" />
-                <span className="h-3 w-[3px] origin-bottom animate-speak-2 rounded-sm bg-speaking" />
-                <span className="h-3 w-[3px] origin-bottom animate-speak-3 rounded-sm bg-speaking" />
-              </div>
-            ) : poor ? (
+            {poor ? (
               <>
                 <CellSignalMedium className="h-[14px] w-[14px] text-warn" />
                 <span className="font-mono text-[10px]">плохая связь</span>

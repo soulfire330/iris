@@ -186,23 +186,7 @@
   --radius-md: var(--radius-md);
   --radius-lg: var(--radius-lg);
 
-  --animate-speak-1: speak1 0.9s ease-in-out infinite;
-  --animate-speak-2: speak2 0.9s ease-in-out infinite;
-  --animate-speak-3: speak3 0.9s ease-in-out infinite;
   --animate-rec: rec 1.8s ease-in-out infinite;
-}
-
-@keyframes speak1 {
-  0%, 100% { transform: scaleY(0.3); }
-  50% { transform: scaleY(1); }
-}
-@keyframes speak2 {
-  0%, 100% { transform: scaleY(1); }
-  50% { transform: scaleY(0.45); }
-}
-@keyframes speak3 {
-  0%, 100% { transform: scaleY(0.55); }
-  50% { transform: scaleY(0.9); }
 }
 @keyframes rec {
   0%, 100% { opacity: 1; }
