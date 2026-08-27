@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	lksdk "github.com/livekit/server-sdk-go/v2"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -13,6 +14,7 @@ type App struct {
 	cfg     *Config
 	avatars *AvatarStore
 	limits  *LoginLimiter
+	livekit *lksdk.RoomServiceClient
 }
 
 type loginReq struct {

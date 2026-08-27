@@ -9,6 +9,7 @@ import {
   RoomEvent,
   Track,
 } from 'livekit-client'
+import { fetchRoomInfo } from '@/lib/api'
 
 export interface DSP {
   echoCancellation: boolean
@@ -39,7 +40,11 @@ export function useRoom(token: string, dsp: DSP) {
   const [remote, setRemote] = useState<Participant[]>([])
   const [connected, setConnected] = useState(false)
   const [error, setError] = useState('')
+  // Общий таймер комнаты: startedAt — якорь с сервера (момент входа первого
+  // участника), clockOffsetMs — разница часов сервера и клиента. Локальное
+  // время держится как запасной старт, пока сервер не ответил.
   const [startedAt, setStartedAt] = useState<Date | null>(null)
+  const [clockOffsetMs, setClockOffsetMs] = useState(0)
 
   // Говорящий: показать через 50мс речи, снять через 50мс тишины на локальном
   // пути (тик освежает каждые 100мс); для серверного списка снятие 500мс —
@@ -82,7 +87,9 @@ export function useRoom(token: string, dsp: DSP) {
     setError('')
     setConnected(false)
     setStartedAt(null)
+    setClockOffsetMs(0)
     shown.current.clear()
+    let alive = true
 
     const update = () => setRemote([...room.remoteParticipants.values()])
     // Говорящий список приходит от сервера; локальный монитор показывает
@@ -118,10 +125,41 @@ export function useRoom(token: string, dsp: DSP) {
     const onJoined = () => {
       setError('')
       setConnected(true)
-      setStartedAt(new Date())
+      anchorToServer(true)
     }
     const onReconnecting = () => {
       setConnected(false)
+    }
+    const onReconnected = () => {
+      setError('')
+      setConnected(true)
+      // Комната могла умереть и подняться заново, пока мы были отключены —
+      // перепроверяем якорь (старый не трогаем до ответа сервера).
+      anchorToServer(false)
+    }
+
+    // Якорь таймера с сервера: /api/room отдаёт started_at из LiveKit
+    // (общий для всех) и server_now для выравнивания часов. Первый участник
+    // обгоняет создание комнаты в LiveKit — поэтому ретраи. Запасной якорь —
+    // локальное время входа, если сервер так и не ответил.
+    const anchorToServer = (provisional: boolean) => {
+      if (provisional) setStartedAt(new Date())
+      let tries = 0
+      const poll = async () => {
+        tries++
+        try {
+          const info = await fetchRoomInfo()
+          if (info.started_at_ms > 0) {
+            setStartedAt(new Date(info.started_at_ms))
+            setClockOffsetMs(info.server_now_ms - Date.now())
+            return
+          }
+        } catch {
+          // сервер миг недоступен — пробуем ещё
+        }
+        if (alive && tries < 10) setTimeout(poll, 2000)
+      }
+      void poll()
     }
 
     room
@@ -138,7 +176,7 @@ export function useRoom(token: string, dsp: DSP) {
       .on(RoomEvent.ActiveSpeakersChanged, onSpeakers)
       .on(RoomEvent.Connected, onConnected)
       .on(RoomEvent.Reconnecting, onReconnecting)
-      .on(RoomEvent.Reconnected, onConnected)
+      .on(RoomEvent.Reconnected, onReconnected)
       .on(RoomEvent.Disconnected, onReconnecting)
 
     // Локальные публикации (микрофон включили/выключили) — включают монитор речи.
@@ -180,6 +218,7 @@ export function useRoom(token: string, dsp: DSP) {
     })
 
     return () => {
+      alive = false
       room.removeAllListeners()
       clearInterval(localTick)
       if (localAnalyser.current) void localAnalyser.current.cleanup()
@@ -190,7 +229,7 @@ export function useRoom(token: string, dsp: DSP) {
     }
   }, [room, token, setShowing])
 
-  return { room, remote, speakers, connected, error, startedAt }
+  return { room, remote, speakers, connected, error, startedAt, clockOffsetMs }
 }
 
 /** Глушит/включает все удалённые аудио-треки (deafen). */

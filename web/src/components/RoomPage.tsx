@@ -22,18 +22,19 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
   const [screenOn, setScreenOn] = useState(false)
   const stageRef = useRef<HTMLDivElement>(null)
 
-  const { room, remote, speakers, connected, error, startedAt } = useRoom(session.token, DEFAULT_DSP)
+  const { room, remote, speakers, connected, error, startedAt, clockOffsetMs } = useRoom(session.token, DEFAULT_DSP)
   const local = room.localParticipant
 
   useEffect(() => applyDeafen(room, deafened), [room, deafened, remote])
 
-  // Таймер встречи
+  // Таймер встречи: тикает локально, но время — серверное (now + сдвиг часов),
+  // поэтому у всех участников одинаковые цифры.
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(t)
   }, [])
-  const elapsed = startedAt ? now - startedAt.getTime() : 0
+  const elapsed = startedAt ? Math.max(0, now + clockOffsetMs - startedAt.getTime()) : 0
 
   const members: Member[] = useMemo(() => {
     const list: Member[] = []
