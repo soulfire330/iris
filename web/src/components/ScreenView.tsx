@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Track } from 'livekit-client'
 import { Video } from '@/components/Video'
 import { cn } from '@/lib/utils'
+import { initials } from '@/lib/names'
 import type { Member } from '@/lib/members'
 
 // Раскладка «крупный план»: выбранный поток (экран или камера) на весь левый
