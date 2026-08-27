@@ -26,8 +26,10 @@ export function LoginPage({ onLogin }: { onLogin: (s: Session) => void }) {
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
       <div className="w-full max-w-sm rounded-lg bg-card p-6 shadow-md ring-1 ring-foreground/10">
-        <h1 className="text-xl font-medium">Iris</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Виртуальный офис · вход по учётной записи</p>
+        <div className="flex items-center gap-3">
+          <img src="/logo.svg" alt="Iris" className="h-9 w-9 rounded-lg" />
+          <h1 className="text-xl font-medium">Iris</h1>
+        </div>
         <form onSubmit={submit} className="mt-6 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="login">Логин</Label>

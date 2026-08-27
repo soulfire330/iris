@@ -1,4 +1,4 @@
-import { Broadcast, MonitorArrowUp, Sparkle } from '@phosphor-icons/react'
+import { MonitorArrowUp, Sparkle } from '@phosphor-icons/react'
 import { formatClock } from '@/lib/names'
 
 export function RoomHeader({
@@ -17,9 +17,7 @@ export function RoomHeader({
   return (
     <header className="flex flex-none items-center justify-between gap-6 border-b border-border bg-card px-6 py-3">
       <div className="flex min-w-0 items-center gap-4">
-        <div className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-sm border border-primary">
-          <Broadcast weight="fill" className="h-3 w-3 text-primary" />
-        </div>
+        <img src="/logo.svg" alt="Iris" className="h-6 w-6 flex-none" />
         <span className="text-[14px] font-medium">Iris · общая комната</span>
         <span className="font-mono text-[11px] text-neutral-600">
           {count} в комнате · {formatClock(elapsed)}
