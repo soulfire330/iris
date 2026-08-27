@@ -41,10 +41,10 @@ export function CallBar(p: CallBarProps) {
           activeClass="text-destructive"
           label={p.screenOn ? 'Закончить демонстрацию' : 'Начать демонстрацию'}
         >
-          {p.screenOn ? <X weight="bold" /> : <MonitorArrowUp />}
+          <MonitorArrowUp />
         </IconButton>
-        <IconButton onClick={p.onCamera} active={p.cameraOn} activeClass="text-primary" label={p.cameraOn ? 'Выключить камеру' : 'Включить камеру'}>
-          <VideoCamera weight={p.cameraOn ? 'fill' : 'regular'} />
+        <IconButton onClick={p.onCamera} active={p.cameraOn} activeClass="text-destructive" label={p.cameraOn ? 'Выключить камеру' : 'Включить камеру'}>
+          <VideoCamera />
         </IconButton>
         {p.extra}
       </div>
