@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Participant,
   RemoteTrack,
+  RemoteTrackPublication,
   Room,
   RoomEvent,
   Track,
@@ -88,6 +89,8 @@ export function useRoom(token: string, dsp: DSP) {
     // Список говорящих приходит от сервера — он же источник правды и для
     // своей плитки (см. комментарий у setShowing).
     const onSpeakers = (list: Participant[]) => {
+      // ВРЕМЕННО: диагностика залипания индикатора
+      console.log('[speakers] список:', list.map((p) => `${p.identity}:${p.isSpeaking}`))
       const active = new Set(list.map((p) => p.identity))
       for (const id of active) setShowing(id, true)
       for (const [id, visible] of shown.current) {
@@ -155,12 +158,19 @@ export function useRoom(token: string, dsp: DSP) {
       void poll()
     }
 
+    // Микрофон отписали (выключили) — серверный трекер говорящих в этом
+    // случае не присылает снятие, индикатор залипал бы. Снимаем сами.
+    const onTrackUnpublished = (pub: RemoteTrackPublication, participant: Participant) => {
+      if (pub.source === Track.Source.Microphone) setShowing(participant.identity, false)
+      update()
+    }
+
     room
       .on(RoomEvent.ParticipantConnected, update)
       .on(RoomEvent.ParticipantDisconnected, update)
       .on(RoomEvent.ParticipantMetadataChanged, update)
       .on(RoomEvent.TrackPublished, update)
-      .on(RoomEvent.TrackUnpublished, update)
+      .on(RoomEvent.TrackUnpublished, onTrackUnpublished)
       .on(RoomEvent.TrackSubscribed, onSubscribed)
       .on(RoomEvent.TrackUnsubscribed, onUnsubscribed)
       .on(RoomEvent.ConnectionQualityChanged, update)
