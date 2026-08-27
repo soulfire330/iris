@@ -96,7 +96,7 @@ export function ScreenView({
                 key={m.id}
                 title={m.name}
                 className={cn(
-                  'relative aspect-[16/9] w-full flex-none overflow-hidden rounded-sm bg-neutral-900',
+                  'relative aspect-[16/9] w-full flex-none overflow-hidden rounded-sm border border-border bg-neutral-900',
                   m.id === member.id && 'shadow-[0_0_0_1px_var(--border)]',
                 )}
               >
