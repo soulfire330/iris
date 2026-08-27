@@ -3,7 +3,6 @@ import {
   createAudioAnalyser,
   LocalAudioTrack,
   Participant,
-  RemoteAudioTrack,
   RemoteTrack,
   Room,
   RoomEvent,
@@ -230,16 +229,4 @@ export function useRoom(token: string, dsp: DSP) {
   }, [room, token, setShowing])
 
   return { room, remote, speakers, connected, error, startedAt, clockOffsetMs }
-}
-
-/** Глушит/включает все удалённые аудио-треки (deafen). */
-export function applyDeafen(room: Room, deafened: boolean) {
-  for (const p of room.remoteParticipants.values()) {
-    for (const pub of p.audioTrackPublications.values()) {
-      const t = pub.track
-      if (t && t.kind === Track.Kind.Audio) {
-        ;(t as RemoteAudioTrack).setVolume(deafened ? 0 : 1)
-      }
-    }
-  }
 }

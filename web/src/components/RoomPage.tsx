@@ -7,13 +7,12 @@ import { ParticipantTile } from '@/components/ParticipantTile'
 import { RoomHeader } from '@/components/RoomHeader'
 import { ScreenView } from '@/components/ScreenView'
 import { SecretaryPanel } from '@/components/SecretaryPanel'
-import { applyDeafen, DEFAULT_DSP, useRoom } from '@/hooks/useRoom'
+import { DEFAULT_DSP, useRoom } from '@/hooks/useRoom'
 import type { Session } from '@/lib/api'
 import { fromParticipant, type Member } from '@/lib/members'
 import { cn } from '@/lib/utils'
 
 export function RoomPage({ session, onLeave }: { session: Session; onLeave: () => void }) {
-  const [deafened, setDeafened] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   // Микрофон/камера/экран: состояние в UI — источник правды, LiveKit — следствие.
   // (Геттеры LiveKit для локальных треков не меняются на mute — по ним UI не жил.)
@@ -24,8 +23,6 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
 
   const { room, remote, speakers, connected, error, startedAt, clockOffsetMs } = useRoom(session.token, DEFAULT_DSP)
   const local = room.localParticipant
-
-  useEffect(() => applyDeafen(room, deafened), [room, deafened, remote])
 
   // Таймер встречи: тикает локально, но время — серверное (now + сдвиг часов),
   // поэтому у всех участников одинаковые цифры.
@@ -107,10 +104,8 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
   const callBar = (extra?: React.ReactNode) => (
     <CallBar
       muted={!micOn}
-      deafened={deafened}
       cameraOn={camOn}
       onMic={() => void setMic(!micOn)}
-      onDeafen={() => setDeafened((d) => !d)}
       onCamera={() => void setCam(!camOn)}
       onScreen={() => void setScreen(!screenOn)}
       onLeave={onLeave}

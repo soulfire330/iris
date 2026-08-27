@@ -1,5 +1,4 @@
 import {
-  Headphones,
   Microphone,
   MicrophoneSlash,
   MonitorArrowUp,
@@ -13,10 +12,8 @@ import { cn } from '@/lib/utils'
 
 export interface CallBarProps {
   muted: boolean
-  deafened: boolean
   cameraOn: boolean
   onMic: () => void
-  onDeafen: () => void
   onCamera: () => void
   onScreen: () => void
   onLeave: () => void
@@ -33,14 +30,6 @@ export function CallBar(p: CallBarProps) {
           {p.muted ? <MicrophoneSlash weight="regular" /> : <Microphone weight="fill" />}
           <span>Микрофон</span>
         </Button>
-        <IconButton
-          onClick={p.onDeafen}
-          active={p.deafened}
-          activeClass="bg-accent text-accent-foreground hover:bg-accent"
-          label="Наушники"
-        >
-          <Headphones />
-        </IconButton>
         <IconButton onClick={p.onScreen} label="Показать экран">
           <MonitorArrowUp />
         </IconButton>
