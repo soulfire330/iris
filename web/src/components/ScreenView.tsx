@@ -3,31 +3,28 @@ import {
   Microphone,
   MicrophoneSlash,
   MonitorArrowUp,
-  SidebarSimple,
 } from '@phosphor-icons/react'
 import type { Ref } from 'react'
 import { Track } from 'livekit-client'
-import { Button } from '@/components/ui/button'
 import { Video } from '@/components/Video'
 import { cn } from '@/lib/utils'
 import { initials } from '@/lib/names'
 import type { Member } from '@/lib/members'
 
-// Раскладка «кто-то показывает экран»: поток на весь левый край, участники — рельсом.
+// Раскладка «кто-то показывает экран»: поток на весь левый край, участники —
+// рельсом. Панель сводок/чата — третьей колонкой в RoomPage.
 export function ScreenView({
   sharer,
   members,
   speaker,
   stageRef,
   callBar,
-  onPanel,
 }: {
   sharer: Member
   members: Member[]
   speaker: Member | undefined
   stageRef: Ref<HTMLDivElement>
   callBar: React.ReactNode
-  onPanel: () => void
 }) {
   return (
     <>
@@ -91,10 +88,6 @@ export function ScreenView({
             )}
           </div>
         ))}
-        <Button variant="ghost" className="mt-auto w-full flex-none gap-2 text-[12px]" onClick={onPanel}>
-          <SidebarSimple className="h-[14px] w-[14px]" />
-          <span>Сводки и чат</span>
-        </Button>
       </aside>
     </>
   )

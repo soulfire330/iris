@@ -1,6 +1,6 @@
 import { CornersOut, X } from '@phosphor-icons/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Track } from 'livekit-client'
+import { RoomEvent, Track, type LocalTrackPublication } from 'livekit-client'
 import { Button } from '@/components/ui/button'
 import { CallBar } from '@/components/CallBar'
 import { ParticipantTile } from '@/components/ParticipantTile'
@@ -23,6 +23,18 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
 
   const { room, remote, speakers, connected, error, startedAt, clockOffsetMs } = useRoom(session.token, DEFAULT_DSP)
   const local = room.localParticipant
+
+  // Браузер остановил показ сам (нативная плашка «Стоп»): LiveKit отзывает
+  // публикацию, а UI узнаёт только из события — вернуть раскладку в сетку.
+  useEffect(() => {
+    const onUnpublished = (pub: LocalTrackPublication) => {
+      if (pub.source === Track.Source.ScreenShare) setScreenOn(false)
+    }
+    room.on(RoomEvent.LocalTrackUnpublished, onUnpublished)
+    return () => {
+      room.off(RoomEvent.LocalTrackUnpublished, onUnpublished)
+    }
+  }, [room])
 
   // Таймер встречи: тикает локально, но время — серверное (now + сдвиг часов),
   // поэтому у всех участников одинаковые цифры.
@@ -142,7 +154,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
         className={cn(
           'grid min-h-0 flex-1',
           layout === 'screen'
-            ? '[grid-template-columns:1fr_208px] max-[900px]:[grid-template-columns:1fr]'
+            ? '[grid-template-columns:1fr_208px_300px] max-[900px]:[grid-template-columns:1fr]'
             : '[grid-template-columns:1fr_300px] max-[1180px]:[grid-template-columns:1fr]',
         )}
       >
@@ -152,7 +164,6 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
             members={members}
             speaker={speaker}
             stageRef={stageRef}
-            onPanel={() => setPanelOpen(true)}
             callBar={callBar(
               <>
                 <Button
@@ -211,7 +222,11 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
           </div>
         )}
 
-        {layout === 'screen' ? null : (
+        {layout === 'screen' ? (
+          // В раскладке показа экран 16:9 оставляет место по бокам — колонки
+          // живут вместе: рельс участников и панель секретаря одновременно.
+          <SecretaryPanel />
+        ) : (
           <div className="hidden max-[1180px]:hidden min-[1181px]:block">
             <SecretaryPanel />
           </div>
