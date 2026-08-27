@@ -19,6 +19,9 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
   const [micOn, setMicOn] = useState(false)
   const [camOn, setCamOn] = useState(false)
   const [screenOn, setScreenOn] = useState(false)
+  // Крупный план: любой видеопоток (экран или камера) можно развернуть кнопкой
+  // на плитке и свернуть кнопкой в углу. Экран при старте выходит сам.
+  const [stage, setStage] = useState<{ id: string; source: Track.Source.Camera | Track.Source.ScreenShare } | null>(null)
   const stageRef = useRef<HTMLDivElement>(null)
 
   const { room, remote, speakers, connected, error, startedAt, clockOffsetMs } = useRoom(session.token, DEFAULT_DSP)
@@ -84,7 +87,16 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
   }, [local, remote, speakers, session, micOn, camOn, screenOn])
 
   const sharer = members.find((m) => m.screenSharing)
-  const layout: 'grid' | 'screen' = sharer ? 'screen' : 'grid'
+  // Демонстрация занимает крупный план сама: кто первый начал — тот в приоритете.
+  // Смена показывающего (или завершение показа) переключает/снимает крупный план;
+  // ручной выбор (вебка/свёрнутый вид) при этом не сбрасывается.
+  useEffect(() => {
+    if (sharer) setStage({ id: sharer.id, source: Track.Source.ScreenShare })
+    else if (stage?.source === Track.Source.ScreenShare) setStage(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sharer?.id])
+  const stageMember = stage ? members.find((m) => m.id === stage.id) : undefined
+  const layout: 'grid' | 'stage' = stageMember ? 'stage' : 'grid'
   const speaker = members.find((m) => m.speaking)
 
   // Колонки от числа участников (диздок «Геометрия плитки»):
@@ -171,7 +183,13 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
         elapsed={elapsed}
         recording={false}
         secretary={false}
-        screenLabel={layout === 'screen' && sharer ? `экран ${sharer.name}` : undefined}
+        screenLabel={
+          stage && stageMember
+            ? stage.source === Track.Source.ScreenShare
+              ? `экран ${stageMember.name}`
+              : `камера ${stageMember.name}`
+            : undefined
+        }
       />
       {error && (
         <div className="flex-none border-b border-border bg-card px-6 py-1.5 font-mono text-[11px] text-warn">
@@ -182,19 +200,21 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
       <div
         className={cn(
           'grid min-h-0 flex-1',
-          layout === 'screen'
+          layout === 'stage'
             ? '[grid-template-columns:1fr_208px_300px] max-[900px]:[grid-template-columns:1fr]'
             : '[grid-template-columns:1fr_300px] max-[1180px]:[grid-template-columns:1fr]',
         )}
       >
-        {layout === 'screen' && sharer ? (
+        {stage && stageMember ? (
           <ScreenView
-            sharer={sharer}
+            member={stageMember}
+            source={stage.source}
             members={members}
             speaker={speaker}
             stageRef={stageRef}
+            onCollapse={() => setStage(null)}
             callBar={callBar(
-              !sharer.isLocal && (
+              !stageMember.isLocal && (
                 <Button
                   variant="ghost"
                   className="gap-2 text-[12px]"
@@ -221,27 +241,36 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
                 </div>
               )}
               {members.map((m) => (
-                  <ParticipantTile
-                    key={m.id}
-                    participant={m.participant}
-                    isLocal={m.isLocal}
-                    state={{
-                      name: m.name,
-                      role: m.role,
-                      speaking: m.speaking,
-                      muted: m.muted,
-                      poor: m.poor,
-                      cameraOn: m.cameraOn,
-                      screenSharing: m.screenSharing,
-                    }}
-                  />
-                ))}
+                <ParticipantTile
+                  key={m.id}
+                  participant={m.participant}
+                  isLocal={m.isLocal}
+                  state={{
+                    name: m.name,
+                    role: m.role,
+                    speaking: m.speaking,
+                    muted: m.muted,
+                    poor: m.poor,
+                    cameraOn: m.cameraOn,
+                    screenSharing: m.screenSharing,
+                  }}
+                  onExpand={
+                    (m.cameraOn || m.screenSharing) && m.participant
+                      ? () =>
+                          setStage({
+                            id: m.id,
+                            source: m.screenSharing ? Track.Source.ScreenShare : Track.Source.Camera,
+                          })
+                      : undefined
+                  }
+                />
+              ))}
             </div>
             {callBar(panelToggle)}
           </div>
         )}
 
-        {layout === 'screen' ? (
+        {layout === 'stage' ? (
           // В раскладке показа экран 16:9 оставляет место по бокам — колонки
           // живут вместе: рельс участников и панель секретаря одновременно.
           <SecretaryPanel />
