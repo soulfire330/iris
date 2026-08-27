@@ -6,7 +6,8 @@ import { CallBar } from '@/components/CallBar'
 import { ParticipantTile } from '@/components/ParticipantTile'
 import { RoomHeader } from '@/components/RoomHeader'
 import { ScreenView } from '@/components/ScreenView'
-import { SecretaryPanel } from '@/components/SecretaryPanel'
+import { SecretaryPanel, type PanelTab } from '@/components/SecretaryPanel'
+import { useChat } from '@/hooks/useChat'
 import { DEFAULT_DSP, useRoom } from '@/hooks/useRoom'
 import type { Session } from '@/lib/api'
 import { fromParticipant, type Member } from '@/lib/members'
@@ -14,6 +15,9 @@ import { cn } from '@/lib/utils'
 
 export function RoomPage({ session, onLeave }: { session: Session; onLeave: () => void }) {
   const [panelOpen, setPanelOpen] = useState(false)
+  // Таб правой колонки живёт здесь, а не в SecretaryPanel: панель монтируется
+  // в трёх местах (колонка, рельс, оверлей), и состояние должно быть одно.
+  const [panel, setPanel] = useState<PanelTab>('summaries')
   // Микрофон/камера/экран: состояние в UI — источник правды, LiveKit — следствие.
   // (Геттеры LiveKit для локальных треков не меняются на mute — по ним UI не жил.)
   const [micOn, setMicOn] = useState(false)
@@ -26,6 +30,29 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
 
   const { room, remote, speakers, connected, error, startedAt, clockOffsetMs } = useRoom(session.token, DEFAULT_DSP)
   const local = room.localParticipant
+  const chat = useChat(
+    room,
+    { identity: local?.identity ?? '', name: session.name, seed: session.avatar_seed },
+    panel === 'chat',
+  )
+
+  // Счётчик непрочитанного в заголовке вкладки, пока она неактивна
+  // (дизайн: состояние комнаты выносится в document.title).
+  useEffect(() => {
+    const sync = () => {
+      document.title =
+        chat.unread > 0 && document.hidden ? `(${chat.unread}) Iris · общая комната` : 'Iris · общая комната'
+    }
+    sync()
+    document.addEventListener('visibilitychange', sync)
+    return () => document.removeEventListener('visibilitychange', sync)
+  }, [chat.unread])
+
+  // Переключение на таб чата гасит счётчик непрочитанного.
+  const onPanelChange = (t: PanelTab) => {
+    setPanel(t)
+    if (t === 'chat') chat.markRead()
+  }
 
   // Браузер остановил показ сам (нативная плашка «Стоп»): LiveKit отзывает
   // публикацию, а UI узнаёт только из события — вернуть раскладку в сетку.
@@ -297,10 +324,24 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
         {layout === 'stage' ? (
           // В раскладке показа экран 16:9 оставляет место по бокам — колонки
           // живут вместе: рельс участников и панель секретаря одновременно.
-          <SecretaryPanel />
+          <SecretaryPanel
+            tab={panel}
+            onTabChange={onPanelChange}
+            messages={chat.messages}
+            unread={chat.unread}
+            connected={connected}
+            onSend={chat.send}
+          />
         ) : (
           <div className="hidden max-[1180px]:hidden min-[1181px]:block">
-            <SecretaryPanel />
+            <SecretaryPanel
+              tab={panel}
+              onTabChange={onPanelChange}
+              messages={chat.messages}
+              unread={chat.unread}
+              connected={connected}
+              onSend={chat.send}
+            />
           </div>
         )}
       </div>
@@ -308,7 +349,14 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
       {panelOpen && (
         <div className="fixed inset-0 z-20 flex justify-end bg-neutral-900/50" onClick={() => setPanelOpen(false)}>
           <div className="h-full" onClick={(e) => e.stopPropagation()}>
-            <SecretaryPanel />
+            <SecretaryPanel
+              tab={panel}
+              onTabChange={onPanelChange}
+              messages={chat.messages}
+              unread={chat.unread}
+              connected={connected}
+              onSend={chat.send}
+            />
           </div>
         </div>
       )}
