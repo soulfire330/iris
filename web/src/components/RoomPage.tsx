@@ -107,7 +107,15 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
     if (!local) return
     setScreenOn(on)
     try {
-      await local.setScreenShareEnabled(on)
+      if (!on) {
+        await local.setScreenShareEnabled(false)
+        return
+      }
+      // Без явного encoding SDK берёт h1080fps15 для экранов ≥1920: потолок
+      // 15fps/2.5Mbps. Явно даём FHD 30fps/8Mbps (LAN потянет).
+      await local.setScreenShareEnabled(true, { video: true, contentHint: 'motion' }, {
+        screenShareEncoding: { maxBitrate: 8_000_000, maxFramerate: 30 },
+      })
     } catch {
       setScreenOn(!on)
     }
