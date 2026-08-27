@@ -144,13 +144,6 @@ export function ScreenView({
                       )}
                     </div>
                   )}
-                  {m.screenSharing && !(videoSource && m.participant) && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-medium">
-                        Показывает экран
-                      </span>
-                    </div>
-                  )}
                   <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-background/90 px-2 py-1">
                     <span className="min-w-0 flex-1 truncate text-[11px]">{m.name}</span>
                     {m.poor ? (
@@ -161,6 +154,9 @@ export function ScreenView({
                           <MicrophoneSlash className="h-[10px] w-[10px] flex-none text-neutral-600" />
                         ) : (
                           <Microphone className="h-[10px] w-[10px] flex-none text-neutral-500" />
+                        )}
+                        {m.screenSharing && (
+                          <MonitorArrowUp className="h-[10px] w-[10px] flex-none text-neutral-500" />
                         )}
                         {m.cameraOn && (
                           <VideoCamera className="h-[10px] w-[10px] flex-none text-neutral-500" />
