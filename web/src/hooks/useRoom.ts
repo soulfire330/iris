@@ -7,7 +7,7 @@ import {
   RoomEvent,
   Track,
 } from 'livekit-client'
-import { fetchRoomInfo } from '@/lib/api'
+import { fetchRoomInfo, type RoomParticipant } from '@/lib/api'
 
 export interface DSP {
   echoCancellation: boolean
@@ -38,6 +38,9 @@ export function useRoom(token: string, dsp: DSP) {
   const [remote, setRemote] = useState<Participant[]>([])
   const [connected, setConnected] = useState(false)
   const [error, setError] = useState('')
+  // Снимок присутствующих с бэкенда: нужен ДО коннекта, чтобы рисовать
+  // плитки-заглушки тех, кто уже в комнате (см. anchorToServer).
+  const [roomInfo, setRoomInfo] = useState<RoomParticipant[]>([])
   // Общий таймер комнаты: startedAt — якорь с сервера (момент входа первого
   // участника), clockOffsetMs — разница часов сервера и клиента. Локальное
   // время держится как запасной старт, пока сервер не ответил.
@@ -143,6 +146,9 @@ export function useRoom(token: string, dsp: DSP) {
         tries++
         try {
           const info = await fetchRoomInfo()
+          // Список людей в комнате — при каждом ответе, а не только при
+          // первом: кто-то мог войти/выйти, пока мы ретраим пустую комнату.
+          if (info.participants) setRoomInfo(info.participants)
           if (info.started_at_ms > 0) {
             setStartedAt(new Date(info.started_at_ms))
             setClockOffsetMs(info.server_now_ms - Date.now())
@@ -155,6 +161,18 @@ export function useRoom(token: string, dsp: DSP) {
       }
       void poll()
     }
+
+    // Снимок присутствующих нужен ещё до коннекта (плитки-заглушки), поэтому
+    // первый опрос запускаем сразу; onConnected/onJoined лишь повторяют его.
+    const probe = async () => {
+      try {
+        const info = await fetchRoomInfo()
+        if (info.participants) setRoomInfo(info.participants)
+      } catch {
+        // бэкенд ещё не ответил — догонит повторный опрос после коннекта
+      }
+    }
+    void probe()
 
     // Микрофон отписали (выключили) — серверный трекер говорящих в этом
     // случае не присылает снятие, индикатор залипал бы. Снимаем сами.
@@ -195,5 +213,5 @@ export function useRoom(token: string, dsp: DSP) {
     }
   }, [room, token, setShowing])
 
-  return { room, remote, speakers, connected, error, startedAt, clockOffsetMs }
+  return { room, remote, speakers, connected, error, startedAt, clockOffsetMs, roomInfo }
 }

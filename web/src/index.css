@@ -187,10 +187,15 @@
   --radius-lg: var(--radius-lg);
 
   --animate-rec: rec 1.8s ease-in-out infinite;
+  --animate-breathe: breathe 2.6s ease-in-out infinite;
 }
 @keyframes rec {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
+}
+@keyframes breathe {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 0.45; }
 }
 
 @layer base {

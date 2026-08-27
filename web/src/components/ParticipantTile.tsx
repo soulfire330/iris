@@ -13,6 +13,7 @@ import { avatarUrl } from '@/lib/avatars'
 import { Video } from '@/components/Video'
 
 export interface TileState {
+  id?: string
   name: string
   role?: string
   seed?: string
@@ -34,7 +35,8 @@ export function ParticipantTile({
 }: {
   participant?: Participant
   isLocal?: boolean
-  // Пока комната подключается: спиннер вместо аватарки в той же плитке.
+  // Пока комната подключается: аватарка в grayscale с «дыханием» — без
+  // спиннера, чтобы сетка не дёргалась, когда плитка станет живой.
   connecting?: boolean
   state: TileState
   // Развернуть поток (камеру/экран) на крупный план; undefined — нечего разворачивать.
@@ -80,9 +82,11 @@ export function ParticipantTile({
       ) : (
         <>
           {connecting ? (
-            <span className="flex h-[max(60px,8.5cqw)] w-[max(60px,8.5cqw)] flex-none items-center justify-center rounded-full bg-secondary">
-              <span className="h-6 w-6 animate-spin rounded-full border-2 border-neutral-500 border-t-transparent" />
-            </span>
+            <img
+              src={avatarUrl(state.id ?? '', state.seed)}
+              alt=""
+              className="h-[max(60px,8.5cqw)] w-[max(60px,8.5cqw)] flex-none rounded-full bg-secondary object-cover grayscale animate-breathe"
+            />
           ) : participant ? (
             <img
               src={avatarUrl(participant.identity, state.seed)}

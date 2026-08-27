@@ -22,9 +22,19 @@ export async function login(login: string, password: string): Promise<Session> {
 // Общий таймер комнаты: started_at_ms — момент входа первого участника
 // (сервер берёт его из LiveKit), server_now_ms — часы сервера для
 // выравнивания тика. 0 в started_at_ms — комната ещё пуста.
+// participants — люди в комнате сейчас (для плиток-заглушек до коннекта).
+export interface RoomParticipant {
+  identity: string
+  name: string
+  seed?: string
+  role?: string
+}
+
 export interface RoomInfo {
   started_at_ms: number
   server_now_ms: number
+  num_participants: number
+  participants: RoomParticipant[]
 }
 
 export async function fetchRoomInfo(): Promise<RoomInfo> {

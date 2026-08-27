@@ -28,8 +28,11 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
   const [stage, setStage] = useState<{ id: string; source: Track.Source.Camera | Track.Source.ScreenShare } | null>(null)
   const stageRef = useRef<HTMLDivElement>(null)
 
-  const { room, remote, speakers, connected, error, startedAt, clockOffsetMs } = useRoom(session.token, DEFAULT_DSP)
+  const { room, remote, speakers, connected, error, startedAt, clockOffsetMs, roomInfo } = useRoom(session.token, DEFAULT_DSP)
   const local = room.localParticipant
+  // Люди из снимка /api/room, которых ещё нет в LiveKit у нас: рисуем их
+  // плитки-заглушки (лоадер вместо аватарки), пока сами подключаемся.
+  // Свой логин отсекаем на всякий случай — до коннекта нас в комнате нет,
   const chat = useChat(
     room,
     { identity: local?.identity ?? '', name: session.name, seed: session.avatar_seed },
@@ -182,6 +185,23 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
     return list
   }, [local, remote, speakers, session, micOn, camOn, screenOn])
 
+  // Люди из снимка /api/room, которых ещё нет в наших LiveKit-участниках:
+  // рисуем плитку-заглушку (grayscale-аватарка с «дыханием»). Connected
+  // приходит раньше ParticipantConnected для уже сидящих, поэтому заглушка
+  // живёт до прихода реального участника, а не только до коннекта.
+  // seenIds: кто уже приходил живым — из снапшота не воскрешаем, иначе
+  // вышедший участник останется заглушкой навсегда (снапшот не обновляется).
+  const seenIds = useRef(new Set<string>())
+  useEffect(() => {
+    for (const m of members) seenIds.current.add(m.id)
+  }, [members])
+  const pendingOthers = useMemo(() => {
+    const have = new Set(members.map((m) => m.id))
+    return roomInfo.filter(
+      (p) => p.identity !== session.login && !have.has(p.identity) && !seenIds.current.has(p.identity),
+    )
+  }, [roomInfo, members, session.login])
+
   const sharer = members.find((m) => m.screenSharing)
   // Демонстрация занимает крупный план сама: кто первый начал — тот в приоритете.
   // Смена показывающего (или завершение показа) переключает/снимает крупный план;
@@ -214,10 +234,12 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
   }, [stage, stageMember])
   const speaker = members.find((m) => m.speaking)
 
+  // Заглушки рисуются и до, и после коннекта (пока не пришёл участник).
+  const tileCount = (connected ? members.length : 1) + pendingOthers.length
   // Колонки от числа участников (диздок «Геометрия плитки»):
   // 1 → 1 · 2 → 2 · 3—4 → 2 · 5—9 → 3 · 10+ → 4.
   const tileCols =
-    members.length >= 10 ? 'grid-cols-4' : members.length >= 5 ? 'grid-cols-3' : members.length >= 2 ? 'grid-cols-2' : 'grid-cols-1'
+    tileCount >= 10 ? 'grid-cols-4' : tileCount >= 5 ? 'grid-cols-3' : tileCount >= 2 ? 'grid-cols-2' : 'grid-cols-1'
 
   // Выключение = unpublishTrack: LiveKit mute() оставляет устройство живым
   // (индикатор микрофона в браузере не гаснет), а unpublish останавливает источник.
@@ -355,13 +377,12 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
                 'max-[1180px]:grid-cols-2 max-[900px]:grid-cols-1',
               )}
             >
-              {!connected && !error ? (
-                // Одна плитка — локальная: пока комната подключается, в ней
-                // спиннер вместо аватарки; после подключения та же плитка
-                // становится живой. Сетка не прыгает и не дублируется.
+              {/* Плитка-заглушка себя, пока комната подключается. */}
+              {!connected && !error && (
                 <ParticipantTile
                   connecting
                   state={{
+                    id: session.login,
                     name: session.name,
                     role: session.role,
                     seed: session.avatar_seed,
@@ -372,7 +393,8 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
                     screenSharing: false,
                   }}
                 />
-              ) : (
+              )}
+              {connected &&
                 members.map((m) => (
                   <ParticipantTile
                     key={m.id}
@@ -398,8 +420,24 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
                         : undefined
                     }
                   />
-                ))
-              )}
+                ))}
+              {pendingOthers.map((p) => (
+                <ParticipantTile
+                  key={p.identity}
+                  connecting
+                  state={{
+                    id: p.identity,
+                    name: p.name || p.identity,
+                    role: p.role,
+                    seed: p.seed,
+                    speaking: false,
+                    muted: true,
+                    poor: false,
+                    cameraOn: false,
+                    screenSharing: false,
+                  }}
+                />
+              ))}
             </div>
             {callBar(panelToggle)}
           </div>
