@@ -7,6 +7,7 @@ import {
   Users,
 } from '@phosphor-icons/react'
 import type { Ref } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Track } from 'livekit-client'
 import { Video } from '@/components/Video'
 import { cn } from '@/lib/utils'
@@ -32,6 +33,22 @@ export function ScreenView({
   onCollapse: () => void
   callBar: React.ReactNode
 }) {
+  // Пока участников мало — рельс показывает полноценные 16:9 плитки (вебку
+  // видно), не влезают — обычные строки со скроллом.
+  const railRef = useRef<HTMLDivElement>(null)
+  const [maxTiles, setMaxTiles] = useState(0)
+  useEffect(() => {
+    const el = railRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => {
+      const tileH = ((el.clientWidth - 24) * 9) / 16 + 6 // 16:9 + зазор 6px
+      setMaxTiles(Math.max(1, Math.floor(el.clientHeight / tileH)))
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  const useTiles = members.length <= maxTiles
+
   return (
     <>
       <div className="flex min-h-0 min-w-0 flex-col gap-6 p-6">
@@ -69,16 +86,71 @@ export function ScreenView({
           <span className="text-[12px] font-medium">Участники</span>
           <span className="ml-auto font-mono text-[10px] text-neutral-600">{members.length}</span>
         </div>
-        <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto p-3">
-          {members.map((m) => (
-            <div
-              key={m.id}
-              title={m.name}
-              className={cn(
-                'flex flex-none items-center gap-3 rounded-sm p-2',
-                m.id === member.id && 'shadow-[0_0_0_1px_var(--border)]',
-              )}
-            >
+        <div
+          ref={railRef}
+          className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto p-3"
+        >
+          {useTiles ? (
+            members.map((m) => (
+              <div
+                key={m.id}
+                title={m.name}
+                className={cn(
+                  'relative aspect-[16/9] w-full flex-none overflow-hidden rounded-sm bg-neutral-900',
+                  m.id === member.id && 'shadow-[0_0_0_1px_var(--border)]',
+                )}
+              >
+                {m.cameraOn && m.participant ? (
+                  <Video
+                    participant={m.participant}
+                    source={Track.Source.Camera}
+                    muted={m.isLocal}
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center bg-secondary">
+                    {m.participant ? (
+                      <img
+                        src={`/api/avatar/${m.participant.identity}`}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-[14px] font-medium text-secondary-foreground">
+                        {initials(m.name)}
+                      </span>
+                    )}
+                  </div>
+                )}
+                <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-background/90 px-2 py-1">
+                  <span className="min-w-0 flex-1 truncate text-[11px]">{m.name}</span>
+                  {m.poor ? (
+                    <CellSignalMedium className="h-[10px] w-[10px] flex-none text-warn" />
+                  ) : (
+                    <>
+                      {m.muted ? (
+                        <MicrophoneSlash className="h-[10px] w-[10px] flex-none text-neutral-600" />
+                      ) : (
+                        <Microphone className="h-[10px] w-[10px] flex-none text-neutral-500" />
+                      )}
+                      {m.screenSharing && (
+                        <MonitorArrowUp className="h-[10px] w-[10px] flex-none text-neutral-500" />
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            ))
+          ) : (
+            members.map((m) => (
+              <div
+                key={m.id}
+                title={m.name}
+                className={cn(
+                  'flex flex-none items-center gap-3 rounded-sm p-2',
+                  m.id === member.id && 'shadow-[0_0_0_1px_var(--border)]',
+                )}
+              >
               {m.cameraOn && m.participant ? (
                 <Video
                   participant={m.participant}
@@ -113,8 +185,8 @@ export function ScreenView({
                 </>
               )}
             </div>
-          ))}
-        </div>
+          )))}
+          </div>
       </aside>
     </>
   )
