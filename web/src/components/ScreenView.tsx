@@ -111,7 +111,7 @@ export function ScreenView({
                   onClick={clickable ? () => onSelect(m) : undefined}
                   className={cn(
                     'relative aspect-[16/9] w-full flex-none overflow-hidden rounded-sm border border-border bg-neutral-900',
-                    m.id === member.id && 'shadow-[0_0_0_1px_var(--border)]',
+                    m.id === member.id && 'shadow-[0_0_0_2px_var(--primary)]',
                     clickable && 'cursor-pointer',
                   )}
                 >
@@ -168,7 +168,7 @@ export function ScreenView({
                   onClick={clickable ? () => onSelect(m) : undefined}
                   className={cn(
                     'flex flex-none items-center gap-3 rounded-sm p-2',
-                    m.id === member.id && 'shadow-[0_0_0_1px_var(--border)]',
+                    m.id === member.id && 'shadow-[0_0_0_2px_var(--primary)]',
                     clickable && 'cursor-pointer hover:bg-primary/5',
                   )}
                 >
