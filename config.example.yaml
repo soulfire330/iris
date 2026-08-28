@@ -2,7 +2,9 @@
 # значения: cp config.example.yaml config.yaml
 
 server:
-  listen: ":8090"
+  # loopback: в проде бэкенд на host network (ходит на livekit через localhost),
+  # а наружу 8090 не выставляется — Caddy проксирует по 127.0.0.1.
+  listen: "127.0.0.1:8090"
   livekit:
     host: localhost:7880
     api_key: devkey

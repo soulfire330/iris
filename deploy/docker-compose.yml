@@ -73,6 +73,9 @@ services:
       recordings-init:
         condition: service_completed_successfully
 
+  # host network: бэкенд ходит на livekit через localhost (в bridge-сети
+  # localhost — это сам контейнер, и 7880 недоступен). listen в конфиге —
+  # 127.0.0.1:8090, наружу 8090 не торчит (Caddy ходит по loopback).
   backend:
     build:
       context: ..
@@ -81,8 +84,7 @@ services:
       # buildkit IPv6 недоступен — bun install висит (npm резолвится в AAAA).
       network: host
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:8090:8090"
+    network_mode: host
     volumes:
       # Путь в config.yaml относительный (./data) — монтируем конфиг под
       # /etc/office, чтобы он резолвился в смонтированный каталог.

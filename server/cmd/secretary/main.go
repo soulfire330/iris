@@ -65,9 +65,11 @@ func main() {
 	llm := cfg{base: os.Getenv("LLM_BASE_URL"), key: os.Getenv("LLM_API_KEY"), model: os.Getenv("LLM_MODEL")}
 	if stt.base == "" || llm.base == "" || llm.model == "" {
 		// Не падаем в crash-loop: стек без AI должен подниматься. Настроил .env —
-		// перезапусти сервис secretary.
+		// перезапусти сервис secretary. select{} — это deadlock-паника, поэтому сон.
 		slog.Warn("secretary not configured: set STT_BASE_URL, LLM_BASE_URL, LLM_MODEL (see .env.example) — waiting")
-		select {}
+		for {
+			time.Sleep(time.Hour)
+		}
 	}
 
 	slog.Info("secretary: watching", "dir", *dir, "stt", stt.base, "llm", llm.base)
