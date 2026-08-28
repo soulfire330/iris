@@ -17,7 +17,7 @@ keys:
 
 room:
   auto_create: true
-  empty_timeout: 300
+  empty_timeout: 120
 
 # TURN — Фаза 4: нужен домен и сертификат (выпускается Caddy, см. Caddyfile).
 # Раскомментировать после получения серта:
