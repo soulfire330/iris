@@ -5,3 +5,5 @@ server/office
 *.log
 config.yaml
 .env
+
+deploy/Caddyfile.self-signed

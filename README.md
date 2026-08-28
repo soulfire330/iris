@@ -2,7 +2,7 @@
 
 Корпоративный голосовой хаб команды: одна постоянная комната, сотрудники в `config.yaml`, запись встреч по кнопке, AI-сводки по кнопке. Go-бэкенд, React-фронт, LiveKit.
 
-Документы: [PLAN.md](PLAN.md) (план выполнения), [CONTEXT.md](CONTEXT.md) (глоссарий), [docs/adr/](docs/adr/) (решения).
+Документы: [PLAN.md](PLAN.md) (план выполнения), [CONTEXT.md](CONTEXT.md) (глоссарий), [docs/API.md](docs/API.md) (публичный API), [docs/DEPLOY.md](docs/DEPLOY.md) (деплой), [docs/adr/](docs/adr/) (решения).
 
 ## Структура
 
@@ -70,11 +70,12 @@ LLM_MODEL=…
 
 Системный промпт секретаря — редактируемый файл `deploy/secretary-prompt.md` (правки подхватываются без перезапуска воркера); участники встречи добавляются к промпту автоматически.
 
+## Публичный API
+
+Записи, сводки и статус комнаты для скриптов/ботов — `GET /api/public/*` под ключом `PUBLIC_API_KEY` (заголовок `X-API-Key`, задаётся в `.env`). Ключ не задан — API выключен (404). Фильтр по дате `date_from`/`date_to`. Документация: [docs/API.md](docs/API.md).
+
 ## Продакшн (Фаза 4)
 
-1. DNS: `hub.<домен>` и `turn.<домен>` → сервер.
-2. Заменить `example.com` в `deploy/Caddyfile`, сменить dev-ключи.
-3. Раскомментировать блок `turn:` в `deploy/livekit.yaml`.
-4. `bun stack:up` (или `docker compose -f deploy/docker-compose.yml up -d --build`)
-5. Собрать фронт: `bun web:build` (кладутся в `web/dist`, бэкенд раздаёт).
-6. Проверить TURN из внешней сети (удалённый участник слышит всех).
+Подробная инструкция (домены, порты, TLS, TURN, файрвол): [docs/DEPLOY.md](docs/DEPLOY.md).
+
+Коротко: DNS `hub.<домен>` + `turn.<домен>` → сервер, домен в `deploy/Caddyfile`, сотрудники в `config.yaml`, ключи STT/LLM в `.env`, затем `bash deploy/deploy.sh` (соберёт фронт, сгенерирует секреты при первом запуске, поднимет стек). Нет домена — `bash deploy/deploy-self-signed.sh` (HTTPS по IP с self-signed сертификатом, только LAN). Снаружи открыты 80/443/tcp, 50000–60000/udp (+ TURN 3478/udp, 5349/tcp); 8090/7880/6379 наружу не выставляются.

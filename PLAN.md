@@ -26,7 +26,7 @@
 ## 2. Архитектура
 
 ```
-Браузер ──HTTPS──► Caddy ──► /api/* ──► backend (Go, :8080)
+Браузер ──HTTPS──► Caddy ──► /api/* ──► backend (Go, :8090)
                          └──► wss /  ──► livekit-server (:7880)
                                           │  ├──► redis (:6379)  ← только очередь Egress
                                           │  └──► livekit-egress ─► data/recordings/*.mp4
@@ -61,9 +61,9 @@ secretary ──► data/recordings/ (mp4 + sidecar с флагом summary) ─
 | 7880/tcp | livekit | сигналинг (за Caddy) |
 | 7881/tcp, 50000–60000/udp | livekit | WebRTC-медиа |
 | 3478/udp, 5349/tcp | livekit | TURN (встроенный) |
-| 8080/tcp | backend | только внутри compose |
+| 8090/tcp | backend | только внутри compose |
 
-Открыть снаружи: 443/tcp, 7881/tcp, 50000–60000/udp, 3478/udp, 5349/tcp.
+Открыть снаружи: 80/tcp (HTTP-01 для сертификата), 443/tcp, 7881/tcp, 50000–60000/udp, 3478/udp, 5349/tcp.
 
 ## 4. Формат config.yaml
 
