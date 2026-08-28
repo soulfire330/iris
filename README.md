@@ -30,7 +30,7 @@ cd .. && bun dev                     # инфраструктура + бэкен
 | Скрипт | Что делает |
 |---|---|
 | `bun dev` | инфраструктура + бэкенд + vite (параллельно, Ctrl+C останавливает всё) |
-| `bun infra:up` / `bun infra:down` | поднять/погасить redis + livekit-server + egress |
+| `bun infra:up` / `bun infra:down` | поднять/погасить valkey + livekit-server + egress |
 | `bun infra:logs` | логи livekit-server |
 | `bun backend` | запустить Go-бэкенд (порт 8090) |
 | `bun web:dev` | vite dev-сервер (5173; проксирует /api и /rtc на бэкенд/livekit) |

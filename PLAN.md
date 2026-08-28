@@ -10,7 +10,7 @@
 
 | Область | Решение |
 |---|---|
-| Хранилище | Без СУБД: сотрудники в `config.yaml`, записи — файлы в volume. Redis — только очередь Egress. (ADR-0001) |
+| Хранилище | Без СУБД: сотрудники в `config.yaml`, записи — файлы в volume. Valkey — только очередь Egress. (ADR-0001) |
 | Авторизация | Свободный ввод login + password. bcrypt-хэш в конфиге. Лимит попыток: 5 за 5 минут на логин, в памяти бэкенда. |
 | Токены | Единственный токен — LiveKit JWT (6 ч), выдаётся эндпоинтом `/api/login`. Отдельного app-JWT нет; он же авторизует внутренний API (заголовок `Authorization: Bearer`). При истечении (6 ч) — перезагрузка страницы и повторный вход. |
 | Роли | Нет. Все равны: любой запускает/останавливает запись. |
@@ -28,7 +28,7 @@
 ```
 Браузер ──HTTPS──► Caddy ──► /api/* ──► backend (Go, :8090)
                          └──► wss /  ──► livekit-server (:7880)
-                                          │  ├──► redis (:6379)  ← только очередь Egress
+                                          │  ├──► valkey (:6379)  ← только очередь Egress
                                           │  └──► livekit-egress ─► data/recordings/*.mp4
                                           └──► TURN/TLS :5349, TURN/UDP :3478 (встроенный)
 
@@ -48,7 +48,7 @@ secretary ──► data/recordings/ (mp4 + sidecar с флагом summary) ─
 |---|---|---|
 | caddy | caddy | TLS, роутинг: веб/API → backend, wss → livekit, серт для TURN в файл |
 | livekit-server | livekit/livekit-server | WebRTC-медиасервер + встроенный TURN |
-| redis | redis:7-alpine | Очередь заданий Egress (это не «БД продукта») |
+| redis | valkey/valkey:7.2-alpine | Очередь заданий Egress — дроп-ин Redis 7.2 (это не «БД продукта») |
 | livekit-egress | livekit/egress | Запись комнаты в MP4 |
 | secretary | сборка из `server/` (тот же образ) | AI-сводки: разбор записей со `summary` (STT → LLM), `{имя}.summary.json` |
 | backend | сборка из `server/` | Авторизация, токены, Egress API, раздача файлов и статики |

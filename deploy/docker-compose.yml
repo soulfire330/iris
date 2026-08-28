@@ -30,8 +30,11 @@ services:
     depends_on:
       - redis
 
+  # Valkey 7.2 — дроп-ин Redis (та же очередь Egress для livekit/egress,
+  # протокол совместим, данных не хранит). Имя сервиса оставлено redis:
+  # его никто не дёргает по имени (livekit/egress ходят на localhost:6379).
   redis:
-    image: redis:7-alpine
+    image: valkey/valkey:7.2-alpine
     restart: unless-stopped
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     ports:
