@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { formatRecDay } from '@/lib/format'
 import type { ChatMessage } from '@/lib/chat'
 import type { RecordingFile } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -20,6 +21,9 @@ export function SecretaryPanel({
   onSend,
   recordings,
   recording,
+  summariesOpen,
+  summariesBlocked,
+  onAllSummaries,
 }: {
   tab: PanelTab
   onTabChange: (t: PanelTab) => void
@@ -29,6 +33,11 @@ export function SecretaryPanel({
   onSend: (text: string) => void
   recordings: RecordingFile[]
   recording: boolean
+  // «Все сводки»: раскладка живёт в RoomPage, кнопка — тумблер. Пока идёт
+  // демонстрация экрана, сводки не открыть (демонстрация приоритетнее).
+  summariesOpen: boolean
+  summariesBlocked: boolean
+  onAllSummaries: () => void
 }) {
   const [draft, setDraft] = useState('')
   // Обводка фокуса — только для клавиатуры: текстовый инпут всегда
@@ -64,21 +73,6 @@ export function SecretaryPanel({
 
   const formatTime = (ts: number) =>
     new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-
-  // «Вчера, 10:00» — день относительно сегодня (Сегодня/Вчера/дд.мм.гг) и время.
-  const formatRecDay = (iso: string) => {
-    const d = new Date(iso)
-    const time = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-    const startOf = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
-    const days = Math.round((startOf(new Date()) - startOf(d)) / 86_400_000)
-    const day =
-      days <= 0
-        ? 'Сегодня'
-        : days === 1
-          ? 'Вчера'
-          : d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' })
-    return `${day}, ${time}`
-  }
 
   // «54 мин · 6» — длительность и число участников; чего нет — пропускаем.
   const recMetaLine = (r: RecordingFile) => {
@@ -177,7 +171,13 @@ export function SecretaryPanel({
               Кнопка AI в панели звонка — при идущей записи — закажет сводку: секретарь
               распознает речь и пришлёт краткий пересказ сюда. Обычная запись — только аудиофайл.
             </p>
-            <Button variant="ghost" disabled className="mt-auto w-full gap-2 text-[12px]">
+            <Button
+              variant="ghost"
+              onClick={onAllSummaries}
+              disabled={summariesBlocked}
+              title={summariesBlocked ? 'Недоступно, пока идёт демонстрация экрана' : undefined}
+              className={cn('mt-auto w-full gap-2 text-[12px]', summariesOpen && 'bg-primary/10 text-ai-300')}
+            >
               <FileText className="h-[14px] w-[14px]" />
               <span>Все сводки</span>
             </Button>
@@ -250,8 +250,19 @@ export function SecretaryPanel({
 // Сводка AI: вертикальная AI-полоса слева определяет блок; заголовок с иконкой,
 // тело — markdown от LLM (react-markdown, стили .md-body), свёрнуто до двух
 // строк, клик по заголовку разворачивает. Нет AI-заказа — блока нет вовсе.
-function SummaryBlock({ status, error, text }: { status: string; error: string; text: string }) {
-  const [open, setOpen] = useState(false)
+// large — для раскладки «Все сводки»: развёрнута сразу, текст крупнее.
+export function SummaryBlock({
+  status,
+  error,
+  text,
+  large = false,
+}: {
+  status: string
+  error: string
+  text: string
+  large?: boolean
+}) {
+  const [open, setOpen] = useState(large)
   const bar = <div className="w-px flex-none self-stretch bg-ai" aria-hidden />
   const title = (
     <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-ai-300">
@@ -265,7 +276,7 @@ function SummaryBlock({ status, error, text }: { status: string; error: string; 
         {bar}
         <div className="min-w-0 flex-1">
           {title}
-          <div className="mt-1 text-[11px] leading-relaxed">
+          <div className={cn('mt-1 leading-relaxed', large ? 'text-[13px]' : 'text-[11px]')}>
             {status === 'error' ? (
               <span className="text-warn">не удалась: {error}</span>
             ) : (
@@ -291,7 +302,7 @@ function SummaryBlock({ status, error, text }: { status: string; error: string; 
         </button>
         <div className={cn('mt-1', !open && 'line-clamp-2')}>
           {text ? (
-            <div className="md-body">
+            <div className="md-body" style={large ? { fontSize: 14 } : undefined}>
               <ReactMarkdown>{text}</ReactMarkdown>
             </div>
           ) : (

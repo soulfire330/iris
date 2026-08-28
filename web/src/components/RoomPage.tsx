@@ -7,6 +7,7 @@ import { ParticipantTile } from '@/components/ParticipantTile'
 import { RoomHeader } from '@/components/RoomHeader'
 import { ScreenView } from '@/components/ScreenView'
 import { SecretaryPanel, type PanelTab } from '@/components/SecretaryPanel'
+import { SummariesView } from '@/components/SummariesView'
 import { useChat } from '@/hooks/useChat'
 import { DEFAULT_DSP, useRoom } from '@/hooks/useRoom'
 import { fetchRecordings, startRecording, stopRecording, enableRecordingSummary, type RecordingFile, type Session } from '@/lib/api'
@@ -27,6 +28,9 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
   // на плитке и свернуть кнопкой в углу. Экран при старте выходит сам.
   const [stage, setStage] = useState<{ id: string; source: Track.Source.Camera | Track.Source.ScreenShare } | null>(null)
   const stageRef = useRef<HTMLDivElement>(null)
+  // «Все сводки»: личный режим чтения сводок в большом окне (кнопка в табе
+  // «Сводки» — тумблер). Демонстрация экрана приоритетнее — закрывает сама.
+  const [summariesOpen, setSummariesOpen] = useState(false)
 
   const { room, remote, speakers, connected, error, startedAt, clockOffsetMs, roomInfo } = useRoom(session.token, DEFAULT_DSP)
   const local = room.localParticipant
@@ -146,7 +150,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
   // panelOpen описывает только оверлей на узком.
   const [recordings, setRecordings] = useState<RecordingFile[]>([])
   useEffect(() => {
-    if (panel !== 'summaries') return
+    if (panel !== 'summaries' && !summariesOpen) return
     let alive = true
     fetchRecordings()
       .then((list) => alive && setRecordings(list))
@@ -154,15 +158,15 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
     return () => {
       alive = false
     }
-  }, [panel, panelOpen, recording, recTick])
+  }, [panel, panelOpen, recording, recTick, summariesOpen])
 
-  // Сводки готовит воркер-секретарь фоном (STT занимает минуты) — таб
-  // обновляется сам, пока открыт.
+  // Сводки готовит воркер-секретарь фоном (STT занимает минуты) — таб и окно
+  // «Все сводки» обновляются сами, пока открыты.
   useEffect(() => {
-    if (panel !== 'summaries') return
+    if (panel !== 'summaries' && !summariesOpen) return
     const t = setInterval(() => setRecTick((x) => x + 1), 20000)
     return () => clearInterval(t)
-  }, [panel, panelOpen])
+  }, [panel, panelOpen, summariesOpen])
 
   // Доступность устройств: без микрофона/камеры кнопки серые. Проверяем по
   // перечню устройств (enumerateDevices не требует разрешения).
@@ -234,15 +238,23 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
   // Смена показывающего (или завершение показа) переключает/снимает крупный план;
   // ручной выбор (вебка/свёрнутый вид) при этом не сбрасывается.
   useEffect(() => {
-    if (sharer) setStage({ id: sharer.id, source: Track.Source.ScreenShare })
-    else if (stage?.source === Track.Source.ScreenShare) setStage(null)
+    if (sharer) {
+      setStage({ id: sharer.id, source: Track.Source.ScreenShare })
+      // Демонстрация приоритетнее сводок: начали шарить — окно закрылось.
+      setSummariesOpen(false)
+    } else if (stage?.source === Track.Source.ScreenShare) setStage(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sharer?.id])
   const stageMember = stage ? members.find((m) => m.id === stage.id) : undefined
-  const layout: 'grid' | 'stage' = stageMember ? 'stage' : 'grid'
+  // Три раскладки: сетка, крупный план, «Все сводки». Демонстрация (sharer)
+  // всегда побеждает — даже в кадр между её стартом и эффектом закрытия.
+  const layout: 'grid' | 'stage' | 'summaries' =
+    summariesOpen && !sharer ? 'summaries' : stageMember ? 'stage' : 'grid'
 
   // Клик по участнику в рельсе — на крупный план, экран приоритетнее вебки.
+  // Из раскладки сводок рельс работает так же: сводки закрываются.
   const selectStage = (m: Member) => {
+    setSummariesOpen(false)
     if (m.screenSharing) setStage({ id: m.id, source: Track.Source.ScreenShare })
     else if (m.cameraOn) setStage({ id: m.id, source: Track.Source.Camera })
   }
@@ -370,12 +382,20 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
       <div
         className={cn(
           'grid min-h-0 flex-1 [grid-template-rows:minmax(0,1fr)]',
-          layout === 'stage'
+          layout === 'stage' || layout === 'summaries'
             ? '[grid-template-columns:1fr_208px_300px] max-[900px]:[grid-template-columns:1fr]'
             : '[grid-template-columns:1fr_300px] max-[1180px]:[grid-template-columns:1fr]',
         )}
       >
-        {stage && stageMember ? (
+        {layout === 'summaries' ? (
+          <SummariesView
+            recordings={recordings}
+            members={members}
+            onSelect={selectStage}
+            onCollapse={() => setSummariesOpen(false)}
+            callBar={callBar()}
+          />
+        ) : stage && stageMember ? (
           <ScreenView
             member={stageMember}
             source={stage.source}
@@ -472,7 +492,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
           </div>
         )}
 
-        {layout === 'stage' ? (
+        {layout === 'stage' || layout === 'summaries' ? (
           // В раскладке показа экран 16:9 оставляет место по бокам — колонки
           // живут вместе: рельс участников и панель секретаря одновременно.
           <SecretaryPanel
@@ -484,6 +504,9 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
             onSend={chat.send}
             recordings={recordings}
             recording={recording}
+            summariesOpen={summariesOpen}
+            summariesBlocked={!!sharer}
+            onAllSummaries={() => setSummariesOpen((o) => !o)}
           />
         ) : (
           <div className="hidden min-h-0 max-[1180px]:hidden min-[1181px]:block">
@@ -494,8 +517,11 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
               unread={chat.unread}
               connected={connected}
               onSend={chat.send}
-            recordings={recordings}
-            recording={recording}
+              recordings={recordings}
+              recording={recording}
+              summariesOpen={summariesOpen}
+              summariesBlocked={!!sharer}
+              onAllSummaries={() => setSummariesOpen((o) => !o)}
             />
           </div>
         )}
@@ -511,8 +537,11 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
               unread={chat.unread}
               connected={connected}
               onSend={chat.send}
-            recordings={recordings}
-            recording={recording}
+              recordings={recordings}
+              recording={recording}
+              summariesOpen={summariesOpen}
+              summariesBlocked={!!sharer}
+              onAllSummaries={() => setSummariesOpen((o) => !o)}
             />
           </div>
         </div>

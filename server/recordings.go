@@ -348,6 +348,12 @@ func (a *App) handleRecordingsList(w http.ResponseWriter, r *http.Request) {
 		} else {
 			item.StartedBy, item.StartedAt = parseRecName(name)
 		}
+		// «Кто был» в UI — имена, а не логины: маппинг из конфига, как в /api/room.
+		for i, login := range item.Participants {
+			if emp := a.cfg.Employee(login); emp != nil {
+				item.Participants[i] = emp.Name
+			}
+		}
 		// Сводка — отдельный файл воркера (тот же каталог): он единственный
 		// писатель, sidecar бэкенд не мутирует параллельно.
 		if b, err := os.ReadFile(filepath.Join(dir, strings.TrimSuffix(name, ".mp4")+".summary.json")); err == nil {
