@@ -14,7 +14,9 @@ COPY server/ .
 RUN CGO_ENABLED=0 go build -o /office . && CGO_ENABLED=0 go build -o /office-secretary ./cmd/secretary
 
 FROM alpine:3.20
-RUN apk add --no-cache ca-certificates
+# CA-серты из golang-образа (там уже установлены) — apk-репозиторий Alpine
+# может быть недоступен из корпоративной сети (403 на dl-cdn.alpinelinux.org).
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=build /office /usr/local/bin/office
 COPY --from=build /office-secretary /usr/local/bin/office-secretary
 # web_dir в config.yaml указывает сюда (абсолютный путь в образе).
