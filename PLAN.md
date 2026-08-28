@@ -59,11 +59,11 @@ secretary ──► data/recordings/ (mp4 + sidecar с флагом summary) ─
 |---|---|---|
 | 80/443/tcp | Caddy | веб, wss |
 | 7880/tcp | livekit | сигналинг (за Caddy) |
-| 7881/tcp, 50000–60000/udp | livekit | WebRTC-медиа |
+| 7881/tcp, 50000–50100/udp | livekit | WebRTC-медиа |
 | 3478/udp, 5349/tcp | livekit | TURN (встроенный) |
 | 8090/tcp | backend | только внутри compose |
 
-Открыть снаружи: 80/tcp (HTTP-01 для сертификата), 443/tcp, 7881/tcp, 50000–60000/udp, 3478/udp, 5349/tcp.
+Открыть снаружи: 80/tcp (HTTP-01 для сертификата), 443/tcp, 7881/tcp, 50000–50100/udp, 3478/udp, 5349/tcp.
 
 ## 4. Формат config.yaml
 

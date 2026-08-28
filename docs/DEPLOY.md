@@ -22,7 +22,7 @@
 |---|---|---|
 | `80/tcp` | Caddy | выпуск сертификата (HTTP-01) и редирект на HTTPS — **обязателен**, без него нет TLS |
 | `443/tcp` | Caddy | HTTPS: сайт, `/api/*`, wss `/rtc` |
-| `50000–60000/udp` | livekit | WebRTC-медиа (голос), основной канал |
+| `50000–50100/udp` | livekit | WebRTC-медиа (голос), основной канал |
 | `7881/tcp` | livekit | TCP-фолбэк медиа — полезен, если у клиентов режут UDP; можно не открывать |
 | `3478/udp`, `5349/tcp` | livekit | TURN (встроенный), когда раскомментирован блок `turn:` в livekit.yaml |
 
@@ -39,7 +39,7 @@
 
 ```bash
 sudo ufw allow 80,443/tcp
-sudo ufw allow 50000:60000/udp
+sudo ufw allow 50000:50100/udp
 sudo ufw allow 7881/tcp          # опционально
 sudo ufw allow 3478/udp          # TURN
 sudo ufw allow 5349/tcp          # TURN
