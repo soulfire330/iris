@@ -9,6 +9,7 @@ import { ScreenView } from '@/components/ScreenView'
 import { SecretaryPanel, type PanelTab, type SavingRecording } from '@/components/SecretaryPanel'
 import { SummariesView } from '@/components/SummariesView'
 import { useChat } from '@/hooks/useChat'
+import { useBackendStatus } from '@/hooks/useBackendStatus'
 import { DEFAULT_DSP, useRoom } from '@/hooks/useRoom'
 import { fetchRecordings, startRecording, stopRecording, enableRecordingSummary, type RecordingFile, type Session } from '@/lib/api'
 import { fromParticipant, type Member } from '@/lib/members'
@@ -32,7 +33,11 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
   // «Сводки» — тумблер). Демонстрация экрана приоритетнее — закрывает сама.
   const [summariesOpen, setSummariesOpen] = useState(false)
 
-  const { room, remote, speakers, connected, error, startedAt, clockOffsetMs, roomInfo } = useRoom(session.token, DEFAULT_DSP)
+  const { room, remote, speakers, connected, state, error, startedAt, clockOffsetMs, roomInfo } = useRoom(
+    session.token,
+    DEFAULT_DSP,
+  )
+  const backendOnline = useBackendStatus()
   const local = room.localParticipant
   // Люди из снимка /api/room, которых ещё нет в LiveKit у нас: рисуем их
   // плитки-заглушки (лоадер вместо аватарки), пока сами подключаемся.
@@ -408,6 +413,8 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
         elapsed={elapsed}
         recording={recording}
         secretary={aiSummary}
+        connState={state}
+        backendOnline={backendOnline}
         screenLabel={
           // Тег в шапке: «Экран», если кто-то демонстрирует (независимо от того,
           // чей поток на крупном плане); иначе — развёрнутая камера.

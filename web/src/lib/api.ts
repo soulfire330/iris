@@ -8,8 +8,19 @@ export interface Session {
   token_ttl_sec: number
 }
 
+// req — fetch с понятной ошибкой сети: бэкенд упал/недоступен → «Нет связи с
+// сервером» вместо английского «Failed to fetch». Ошибки HTTP (4xx/5xx) —
+// как раньше, текст от сервера.
+async function req(input: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(input, init)
+  } catch {
+    throw new Error('Нет связи с сервером')
+  }
+}
+
 export async function login(login: string, password: string): Promise<Session> {
-  const res = await fetch('/api/login', {
+  const res = await req('/api/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ login, password }),
@@ -38,7 +49,7 @@ export interface RoomInfo {
 }
 
 export async function fetchRoomInfo(): Promise<RoomInfo> {
-  const res = await fetch('/api/room')
+  const res = await req('/api/room')
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error ?? `Ошибка ${res.status}`)
   return data as RoomInfo
@@ -62,7 +73,7 @@ export interface RecordingFile {
 }
 
 export async function startRecording(login: string): Promise<void> {
-  const res = await fetch('/api/recording/start', {
+  const res = await req('/api/recording/start', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ login }),
@@ -75,13 +86,13 @@ export async function startRecording(login: string): Promise<void> {
 // при идущей записи). Флаг пишет бэкенд в sidecar записи, воркер-секретарь
 // разберёт её после стопа.
 export async function enableRecordingSummary(): Promise<void> {
-  const res = await fetch('/api/recording/summary', { method: 'POST' })
+  const res = await req('/api/recording/summary', { method: 'POST' })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error ?? `Ошибка ${res.status}`)
 }
 
 export async function stopRecording(login: string): Promise<{ stopped: boolean }> {
-  const res = await fetch('/api/recording/stop', {
+  const res = await req('/api/recording/stop', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ login }),
@@ -92,7 +103,7 @@ export async function stopRecording(login: string): Promise<{ stopped: boolean }
 }
 
 export async function fetchRecordings(): Promise<RecordingFile[]> {
-  const res = await fetch('/api/recordings')
+  const res = await req('/api/recordings')
   const data = await res.json().catch(() => ([]))
   if (!res.ok) throw new Error(data.error ?? `Ошибка ${res.status}`)
   return data as RecordingFile[]

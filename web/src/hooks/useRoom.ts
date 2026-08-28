@@ -37,6 +37,10 @@ export function useRoom(token: string, dsp: DSP) {
   )
   const [remote, setRemote] = useState<Participant[]>([])
   const [connected, setConnected] = useState(false)
+  // Состояние соединения для шапки: connected — булев, а для бейджа нужны
+  // и промежуточные фазы (переподключение, потеря). Источник — события
+  // комнаты, как и у connected.
+  const [state, setState] = useState<'connecting' | 'connected' | 'reconnecting' | 'disconnected'>('connecting')
   const [error, setError] = useState('')
   // Снимок присутствующих с бэкенда: нужен ДО коннекта, чтобы рисовать
   // плитки-заглушки тех, кто уже в комнате (см. anchorToServer).
@@ -83,6 +87,7 @@ export function useRoom(token: string, dsp: DSP) {
   useEffect(() => {
     setError('')
     setConnected(false)
+    setState('connecting')
     setStartedAt(null)
     setClockOffsetMs(0)
     shown.current.clear()
@@ -117,22 +122,30 @@ export function useRoom(token: string, dsp: DSP) {
     // LiveKit сам ретраит обрыв первого коннекта, и UI должен это увидеть.
     const onConnected = () => {
       setError('')
+      setState('connected')
       setConnected(true)
     }
     const onJoined = () => {
       setError('')
+      setState('connected')
       setConnected(true)
       anchorToServer(true)
     }
     const onReconnecting = () => {
+      setState('reconnecting')
       setConnected(false)
     }
     const onReconnected = () => {
       setError('')
+      setState('connected')
       setConnected(true)
       // Комната могла умереть и подняться заново, пока мы были отключены —
       // перепроверяем якорь (старый не трогаем до ответа сервера).
       anchorToServer(false)
+    }
+    const onDisconnected = () => {
+      setState('disconnected')
+      setConnected(false)
     }
 
     // Якорь таймера с сервера: /api/room отдаёт started_at из LiveKit
@@ -196,7 +209,7 @@ export function useRoom(token: string, dsp: DSP) {
       .on(RoomEvent.Connected, onConnected)
       .on(RoomEvent.Reconnecting, onReconnecting)
       .on(RoomEvent.Reconnected, onReconnected)
-      .on(RoomEvent.Disconnected, onReconnecting)
+      .on(RoomEvent.Disconnected, onDisconnected)
 
     // Стартовое подключение. Промис может упасть (таймаут/обрыв), но комната
     // может восстановиться сама — тогда Connected снова переключит состояние
@@ -213,5 +226,5 @@ export function useRoom(token: string, dsp: DSP) {
     }
   }, [room, token, setShowing])
 
-  return { room, remote, speakers, connected, error, startedAt, clockOffsetMs, roomInfo }
+  return { room, remote, speakers, connected, state, error, startedAt, clockOffsetMs, roomInfo }
 }
