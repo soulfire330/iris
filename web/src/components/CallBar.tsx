@@ -4,6 +4,7 @@ import {
   MonitorArrowUp,
   Record,
   SignOut,
+  Sparkle,
   VideoCamera,
   X,
 } from '@phosphor-icons/react'
@@ -16,12 +17,14 @@ export interface CallBarProps {
   cameraOn: boolean
   screenOn: boolean
   recording: boolean
+  aiSummary: boolean // идёт запись со сводкой (AI-кнопка)
   micAvailable: boolean
   camAvailable: boolean
   onMic: () => void
   onCamera: () => void
   onScreen: () => void
   onRecord: () => void
+  onAi: () => void
   onLeave: () => void
   extra?: ReactNode // «Во весь экран» для зрителей показа
   onPanel?: () => void
@@ -38,16 +41,9 @@ export function CallBar(p: CallBarProps) {
           activeClass="text-primary"
           disabled={!p.micAvailable}
           label={p.muted ? 'Включить микрофон' : 'Выключить микрофон'}
+          className="border-primary/40"
         >
           {p.muted ? <MicrophoneSlash /> : <Microphone weight="fill" />}
-        </IconButton>
-        <IconButton
-          onClick={p.onRecord}
-          active={p.recording}
-          activeClass="text-recording"
-          label={p.recording ? 'Остановить запись' : 'Записать звонок'}
-        >
-          <Record weight={p.recording ? 'fill' : 'regular'} />
         </IconButton>
         <IconButton
           onClick={p.onScreen}
@@ -60,6 +56,28 @@ export function CallBar(p: CallBarProps) {
         <IconButton onClick={p.onCamera} active={p.cameraOn} activeClass="text-destructive" disabled={!p.camAvailable} label={p.cameraOn ? 'Выключить камеру' : 'Включить камеру'}>
           <VideoCamera />
         </IconButton>
+        <IconButton
+          onClick={p.onRecord}
+          active={p.recording}
+          activeClass="text-recording"
+          label={p.recording ? 'Остановить запись' : 'Записать звонок'}
+        >
+          <Record weight={p.recording ? 'fill' : 'regular'} />
+        </IconButton>
+        {/* AI-сводка: появляется только при идущей записи (решение: не путать
+            со стартом записи) и заказывает сводку для неё. Уже заказана —
+            кнопка серая, повторный клик ничего не делает. */}
+        {p.recording && (
+          <IconButton
+            onClick={p.onAi}
+            active={p.aiSummary}
+            activeClass="text-ai"
+            disabled={p.aiSummary}
+            label={p.aiSummary ? 'Сводка заказана' : 'Заказать AI-сводку'}
+          >
+            <Sparkle weight={p.aiSummary ? 'fill' : 'regular'} />
+          </IconButton>
+        )}
         {p.extra}
       </div>
       <div className="flex items-center gap-3">
@@ -89,6 +107,7 @@ function IconButton({
   activeClass,
   disabled,
   label,
+  className,
   children,
 }: {
   onClick: () => void
@@ -96,12 +115,13 @@ function IconButton({
   activeClass?: string
   disabled?: boolean
   label: string
+  className?: string
   children: ReactNode
 }) {
   return (
     <Button
       variant="ghost"
-      className={active ? cn(activeClass, 'h-9 w-9') : cn('h-9 w-9 text-primary')}
+      className={cn(active ? cn(activeClass, 'h-9 w-9') : cn('h-9 w-9 text-primary'), className)}
       onClick={onClick}
       aria-label={label}
       title={label}

@@ -1,0 +1,19 @@
+# Шаблон конфига. Скопируй в config.yaml (он в .gitignore) и впиши свои
+# значения: cp config.example.yaml config.yaml
+
+server:
+  listen: ":8090"
+  livekit:
+    host: localhost:7880
+    api_key: devkey
+    # сгенерируй: openssl rand -hex 32
+    api_secret: <secret>
+  room: office
+  data_dir: ./data
+  web_dir: ./web-dist
+
+employees:
+  - login: admin
+    name: Админ
+    # пароль сгенерируй: bun hashpass 'пароль' (или go run ./server/cmd/hashpass 'пароль')
+    password_hash: $2a$10$...

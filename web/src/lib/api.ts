@@ -50,9 +50,15 @@ export async function fetchRoomInfo(): Promise<RoomInfo> {
 export interface RecordingFile {
   name: string
   started_at: string
+  stopped_at: string // пусто, если запись завершилась сама (комната опустела)
   started_by: string
   participants: string[]
   size: number
+  summary: boolean
+  // Состояние сводки: "" | transcribing | summarizing | done | error.
+  ai_status: string
+  ai_error: string
+  summary_text: string
 }
 
 export async function startRecording(login: string): Promise<void> {
@@ -61,6 +67,15 @@ export async function startRecording(login: string): Promise<void> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ login }),
   })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error ?? `Ошибка ${res.status}`)
+}
+
+// Заказ AI-сводки для идущей записи (кнопка AI в панели звонка — видна только
+// при идущей записи). Флаг пишет бэкенд в sidecar записи, воркер-секретарь
+// разберёт её после стопа.
+export async function enableRecordingSummary(): Promise<void> {
+  const res = await fetch('/api/recording/summary', { method: 'POST' })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error ?? `Ошибка ${res.status}`)
 }

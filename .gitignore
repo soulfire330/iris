@@ -3,3 +3,5 @@ web/dist/
 web/node_modules/
 server/office
 *.log
+config.yaml
+.env

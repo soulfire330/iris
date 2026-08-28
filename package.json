@@ -6,11 +6,12 @@
     "infra:down": "docker compose -f deploy/docker-compose.yml down",
     "infra:logs": "docker compose -f deploy/docker-compose.yml logs -f livekit-server",
     "backend": "cd server && go run . -config ../config.yaml",
+    "secretary": "set -a; . ./.env 2>/dev/null || true; set +a; cd server && RECORDINGS_DIR=../data/recordings LLM_PROMPT_FILE=../deploy/secretary-prompt.md go run ./cmd/secretary",
     "web:dev": "cd web && bun run dev",
     "web:build": "cd web && bun run build",
     "hashpass": "cd server && go run ./cmd/hashpass",
     "stack:up": "docker compose -f deploy/docker-compose.yml up -d --build",
     "stack:down": "docker compose -f deploy/docker-compose.yml down",
-    "dev": "bun run infra:up && bun run --parallel backend web:dev"
+    "dev": "bun run infra:up && bun run --parallel backend web:dev secretary"
   }
 }

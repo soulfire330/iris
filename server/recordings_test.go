@@ -33,3 +33,14 @@ func TestParseRecName(t *testing.T) {
 		t.Fatalf("started_at: %q", startedAt)
 	}
 }
+
+// TestFillRecMetaKeepsSummary — флаг summary не теряется, когда sidecar
+// дополняется на стопе или при заказе сводки (fillRecMeta трогает только
+// пустые поля).
+func TestFillRecMetaKeepsSummary(t *testing.T) {
+	meta := recMeta{Summary: true}
+	fillRecMeta(&meta, "2025-06-11_14-30_ivanov.mp4", "2025-06-11T14:30:00+03:00")
+	if !meta.Summary || meta.StartedBy != "ivanov" || meta.StartedAt == "" {
+		t.Fatalf("sidecar: %+v", meta)
+	}
+}

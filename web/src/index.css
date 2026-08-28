@@ -219,3 +219,77 @@
     background: color-mix(in srgb, var(--accent) 30%, transparent);
   }
 }
+
+/* Markdown-сводка секретаря (react-markdown) — узкая колонка 300px */
+.md-body {
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--neutral-300);
+}
+.md-body > :first-child {
+  margin-top: 0;
+}
+.md-body > :last-child {
+  margin-bottom: 0;
+}
+.md-body p {
+  margin: 0.4em 0;
+}
+.md-body ul,
+.md-body ol {
+  margin: 0.4em 0;
+  padding-left: 1.2em;
+}
+.md-body ul {
+  list-style: disc;
+}
+.md-body ol {
+  list-style: decimal;
+}
+.md-body li {
+  margin: 0.15em 0;
+}
+.md-body li::marker {
+  color: var(--ai-500);
+}
+.md-body strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+.md-body h1,
+.md-body h2,
+.md-body h3,
+.md-body h4 {
+  margin: 0.6em 0 0.3em;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+.md-body a {
+  color: var(--ai-400);
+  text-decoration: underline;
+}
+.md-body code {
+  padding: 0 0.3em;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+.md-body pre {
+  margin: 0.4em 0;
+  padding: 0.5em 0.6em;
+  border-radius: 6px;
+  overflow-x: auto;
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+}
+.md-body pre code {
+  padding: 0;
+  background: none;
+}
+.md-body blockquote {
+  margin: 0.4em 0;
+  padding-left: 0.7em;
+  border-left: 2px solid var(--ai-500);
+  color: var(--neutral-500);
+}

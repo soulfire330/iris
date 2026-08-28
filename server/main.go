@@ -35,6 +35,7 @@ func main() {
 	mux.HandleFunc("GET /api/avatar/{login}", app.handleAvatar)
 	mux.HandleFunc("POST /api/recording/start", app.handleRecordingStart)
 	mux.HandleFunc("POST /api/recording/stop", app.handleRecordingStop)
+	mux.HandleFunc("POST /api/recording/summary", app.handleRecordingSummary)
 	mux.HandleFunc("GET /api/recordings", app.handleRecordingsList)
 	mux.HandleFunc("GET /api/recordings/{name}", app.handleRecordingDownload)
 	mux.Handle("/", http.FileServer(http.Dir(cfg.Server.WebDir)))

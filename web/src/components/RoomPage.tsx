@@ -9,7 +9,7 @@ import { ScreenView } from '@/components/ScreenView'
 import { SecretaryPanel, type PanelTab } from '@/components/SecretaryPanel'
 import { useChat } from '@/hooks/useChat'
 import { DEFAULT_DSP, useRoom } from '@/hooks/useRoom'
-import { fetchRecordings, startRecording, stopRecording, type RecordingFile, type Session } from '@/lib/api'
+import { fetchRecordings, startRecording, stopRecording, enableRecordingSummary, type RecordingFile, type Session } from '@/lib/api'
 import { fromParticipant, type Member } from '@/lib/members'
 import { cn } from '@/lib/utils'
 
@@ -72,9 +72,14 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
   // Запись: состояние — метаданные комнаты (бэкенд пишет их при старте/стопе
   // egress), поэтому тег и кнопка синхронны у всех участников. При
   // подключении берём текущее значение — запись могла идти до нас.
+  // aiSummary — запись заказана AI-кнопкой (со сводкой, эпик «Секретарь»).
   const [recording, setRecording] = useState(false)
+  const [aiSummary, setAiSummary] = useState(false)
   useEffect(() => {
-    const sync = (meta: string) => setRecording(meta.includes('"recording":true'))
+    const sync = (meta: string) => {
+      setRecording(meta.includes('"recording":true'))
+      setAiSummary(meta.includes('"summary":true'))
+    }
     sync(room.metadata ?? '')
     room.on(RoomEvent.RoomMetadataChanged, sync)
     return () => {
@@ -121,6 +126,20 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
     }
   }
 
+  // AI-кнопка видна только при идущей записи (решение: не путать со стартом
+  // записи) — заказывает сводку для текущей записи: бэкенд ставит флаг в
+  // sidecar, по нему воркер-секретарь найдёт запись после стопа. Уже заказана —
+  // ничего не делаем (кнопка серая).
+  const onAi = async () => {
+    if (!recording || aiSummary) return
+    setActionError('')
+    try {
+      await enableRecordingSummary()
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
   // Список записей для таба «Сводки»: тянем при входе в комнату и после
   // каждого старта/стопа записи и по тику после стопа (файл дописывается).
   // Без panelOpen в условии: на широком экране колонка видна всегда, а
@@ -136,6 +155,14 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
       alive = false
     }
   }, [panel, panelOpen, recording, recTick])
+
+  // Сводки готовит воркер-секретарь фоном (STT занимает минуты) — таб
+  // обновляется сам, пока открыт.
+  useEffect(() => {
+    if (panel !== 'summaries') return
+    const t = setInterval(() => setRecTick((x) => x + 1), 20000)
+    return () => clearInterval(t)
+  }, [panel, panelOpen])
 
   // Доступность устройств: без микрофона/камеры кнопки серые. Проверяем по
   // перечню устройств (enumerateDevices не требует разрешения).
@@ -294,12 +321,14 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
       cameraOn={camOn}
       screenOn={screenOn}
       recording={recording}
+      aiSummary={aiSummary}
       micAvailable={micAvailable}
       camAvailable={camAvailable}
       onMic={() => void setMic(!micOn)}
       onCamera={() => void setCam(!camOn)}
       onScreen={() => void setScreen(!screenOn)}
       onRecord={() => void onRecord()}
+      onAi={() => void onAi()}
       onLeave={onLeave}
       extra={extra}
     />
@@ -321,7 +350,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
         count={members.length}
         elapsed={elapsed}
         recording={recording}
-        secretary={false}
+        secretary={aiSummary}
         screenLabel={
           // Тег в шапке: «Экран», если кто-то демонстрирует (независимо от того,
           // чей поток на крупном плане); иначе — развёрнутая камера.
@@ -340,7 +369,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
 
       <div
         className={cn(
-          'grid min-h-0 flex-1',
+          'grid min-h-0 flex-1 [grid-template-rows:minmax(0,1fr)]',
           layout === 'stage'
             ? '[grid-template-columns:1fr_208px_300px] max-[900px]:[grid-template-columns:1fr]'
             : '[grid-template-columns:1fr_300px] max-[1180px]:[grid-template-columns:1fr]',
@@ -457,7 +486,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
             recording={recording}
           />
         ) : (
-          <div className="hidden max-[1180px]:hidden min-[1181px]:block">
+          <div className="hidden min-h-0 max-[1180px]:hidden min-[1181px]:block">
             <SecretaryPanel
               tab={panel}
               onTabChange={onPanelChange}

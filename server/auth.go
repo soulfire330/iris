@@ -20,6 +20,10 @@ type App struct {
 	// recMu — одна запись на комнату: старт/стоп сериализуем, а источник
 	// правды — активные egress в LiveKit, не память.
 	recMu sync.Mutex
+	// activeRecName — имя файла идущей записи. FileResults у активного egress
+	// может быть пуст до финализации, а заказ сводки должен попасть в sidecar
+	// именно этой записи — имя запоминаем при старте (статус записи — по-прежнему LiveKit).
+	activeRecName string
 }
 
 type loginReq struct {

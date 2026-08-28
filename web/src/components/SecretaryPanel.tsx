@@ -1,4 +1,5 @@
-import { ChatTeardropText, DownloadSimple, FileText, PaperPlaneRight, Sparkle } from '@phosphor-icons/react'
+import { CaretDown, CaretUp, ChatTeardropText, DownloadSimple, FileText, PaperPlaneRight, Sparkle } from '@phosphor-icons/react'
+import ReactMarkdown from 'react-markdown'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -64,18 +65,34 @@ export function SecretaryPanel({
   const formatTime = (ts: number) =>
     new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 
-  const formatRecDate = (iso: string) =>
-    new Date(iso).toLocaleString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+  // «Вчера, 10:00» — день относительно сегодня (Сегодня/Вчера/дд.мм.гг) и время.
+  const formatRecDay = (iso: string) => {
+    const d = new Date(iso)
+    const time = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+    const startOf = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+    const days = Math.round((startOf(new Date()) - startOf(d)) / 86_400_000)
+    const day =
+      days <= 0
+        ? 'Сегодня'
+        : days === 1
+          ? 'Вчера'
+          : d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' })
+    return `${day}, ${time}`
+  }
 
-  const formatSize = (bytes: number) =>
-    bytes > 1024 * 1024
-      ? `${(bytes / 1024 / 1024).toFixed(1)} МБ`
-      : `${Math.max(1, Math.round(bytes / 1024))} КБ`
+  // «54 мин · 6» — длительность и число участников; чего нет — пропускаем.
+  const recMetaLine = (r: RecordingFile) => {
+    const parts: string[] = []
+    if (r.stopped_at) {
+      const min = Math.max(
+        1,
+        Math.round((new Date(r.stopped_at).getTime() - new Date(r.started_at).getTime()) / 60_000),
+      )
+      parts.push(`${min} мин`)
+    }
+    if ((r.participants?.length ?? 0) > 0) parts.push(String(r.participants.length))
+    return parts.join(' · ')
+  }
 
   return (
     <aside className="flex h-full min-h-0 w-[300px] flex-col border-l border-border bg-card">
@@ -105,46 +122,60 @@ export function SecretaryPanel({
           <>
             <div className="flex flex-col gap-2">
               <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-neutral-600">
-                записи звонков
+                Прошлые встречи
               </span>
-              {recording ? (
+              {recordings.length === 0 ? (
                 <p className="text-[12px] leading-relaxed text-neutral-500">
-                  Запись идёт — файл появится в списке после остановки.
-                </p>
-              ) : recordings.length === 0 ? (
-                <p className="text-[12px] leading-relaxed text-neutral-500">
-                  Записей пока нет — нажмите кнопку записи в панели звонка.
+                  {recording
+                    ? 'Запись идёт — файл появится в списке после остановки.'
+                    : 'Записей пока нет — нажмите кнопку записи в панели звонка.'}
                 </p>
               ) : (
-                recordings.map((r) => (
-                  <div
-                    key={r.name}
-                    className="flex items-center justify-between gap-2 rounded-md border border-border bg-background/50 px-3 py-2"
-                  >
-                    <div className="flex min-w-0 flex-col gap-0.5">
-                      <span className="text-[12px] font-medium">{formatRecDate(r.started_at)}</span>
-                      <span className="truncate font-mono text-[10px] text-neutral-500">
-                        {r.started_by}
-                        {(r.participants?.length ?? 0) > 0 && ` · ${r.participants.join(', ')}`}
-                        {' · '}
-                        {formatSize(r.size)}
-                      </span>
+                <>
+                  {/* Текущая запись в список не попадает, пока egress пишет файл —
+                      список прошлых встреч при этом не прячем. */}
+                  {recording && (
+                    <p className="text-[12px] leading-relaxed text-neutral-500">
+                      Идёт запись — появится в списке после остановки.
+                    </p>
+                  )}
+                  {recordings.map((r) => (
+                    <div key={r.name} className="flex flex-col gap-1.5">
+                      {/* Запись — не карточка: строка списка. Дата слева, справа —
+                          длительность · участники и скачивание. */}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate text-[12px] font-medium">
+                          {formatRecDay(r.started_at)}
+                        </span>
+                        <div className="flex flex-none items-center gap-2.5">
+                          {recMetaLine(r) && (
+                            <span className="font-mono text-[10px] text-neutral-500">
+                              {recMetaLine(r)}
+                            </span>
+                          )}
+                          <a
+                            href={`/api/recordings/${encodeURIComponent(r.name)}`}
+                            download
+                            title="Скачать"
+                            className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-foreground/5 hover:text-foreground"
+                          >
+                            <DownloadSimple className="h-3.5 w-3.5" />
+                          </a>
+                        </div>
+                      </div>
+                      {/* AI-сводка: статус и текст пишет воркер-секретарь в
+                          {имя}.summary.json, бэкенд отдаёт в списке. */}
+                      {r.summary && (
+                        <SummaryBlock status={r.ai_status} error={r.ai_error} text={r.summary_text} />
+                      )}
                     </div>
-                    <a
-                      href={`/api/recordings/${encodeURIComponent(r.name)}`}
-                      download
-                      title="Скачать"
-                      className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-foreground/5 hover:text-foreground"
-                    >
-                      <DownloadSimple className="h-3.5 w-3.5" />
-                    </a>
-                  </div>
-                ))
+                  ))}
+                </>
               )}
             </div>
             <p className="text-[12px] leading-relaxed text-neutral-500">
-              Секретарь пишет встречу и присылает сводку в чат комнаты после того, как вышел
-              последний участник. По ходу разговора он молчит.
+              Кнопка AI в панели звонка — при идущей записи — закажет сводку: секретарь
+              распознает речь и пришлёт краткий пересказ сюда. Обычная запись — только аудиофайл.
             </p>
             <Button variant="ghost" disabled className="mt-auto w-full gap-2 text-[12px]">
               <FileText className="h-[14px] w-[14px]" />
@@ -213,6 +244,62 @@ export function SecretaryPanel({
         </div>
       )}
     </aside>
+  )
+}
+
+// Сводка AI: вертикальная AI-полоса слева определяет блок; заголовок с иконкой,
+// тело — markdown от LLM (react-markdown, стили .md-body), свёрнуто до двух
+// строк, клик по заголовку разворачивает. Нет AI-заказа — блока нет вовсе.
+function SummaryBlock({ status, error, text }: { status: string; error: string; text: string }) {
+  const [open, setOpen] = useState(false)
+  const bar = <div className="w-px flex-none self-stretch bg-ai" aria-hidden />
+  const title = (
+    <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-ai-300">
+      <Sparkle className="h-3 w-3" />
+      <span>Сводка</span>
+    </span>
+  )
+  if (status !== 'done') {
+    return (
+      <div className="flex gap-2.5">
+        {bar}
+        <div className="min-w-0 flex-1">
+          {title}
+          <div className="mt-1 text-[11px] leading-relaxed">
+            {status === 'error' ? (
+              <span className="text-warn">не удалась: {error}</span>
+            ) : (
+              <span className="text-neutral-500">готовится…</span>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className="flex gap-2.5">
+      {bar}
+      <div className="min-w-0 flex-1">
+        <button
+          onClick={() => setOpen(!open)}
+          className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-ai-300 transition-colors hover:text-ai-400"
+          aria-expanded={open}
+        >
+          <Sparkle className="h-3 w-3" />
+          <span>Сводка</span>
+          {open ? <CaretUp className="h-3 w-3" /> : <CaretDown className="h-3 w-3" />}
+        </button>
+        <div className={cn('mt-1', !open && 'line-clamp-2')}>
+          {text ? (
+            <div className="md-body">
+              <ReactMarkdown>{text}</ReactMarkdown>
+            </div>
+          ) : (
+            <p className="text-[11px] text-neutral-500">Сводка пуста — в записи не было речи.</p>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 

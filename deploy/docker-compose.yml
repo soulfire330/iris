@@ -64,6 +64,7 @@ services:
   backend:
     build:
       context: ../server
+    image: office
     restart: unless-stopped
     ports:
       - "127.0.0.1:8090:8090"
@@ -74,6 +75,26 @@ services:
       - ../data:/etc/office/data
       - ../web/dist:/etc/office/web-dist:ro
     command: ["-config", "/etc/office/config.yaml"]
+
+  # Секретарь: воркер AI-сводок (server/cmd/secretary). Тот же образ, другой
+  # entrypoint; смотрит записи с флагом summary и разбирает их STT → LLM.
+  # Секреты — .env (env_file), каталог записей — общий volume.
+  secretary:
+    image: office
+    restart: unless-stopped
+    entrypoint: ["office-secretary"]
+    environment:
+      LLM_PROMPT_FILE: /etc/office/secretary-prompt.md
+    env_file:
+      - path: ../.env
+        required: false
+    volumes:
+      - ../data/recordings:/data/recordings
+      # системный промпт — редактируется на хосте, подхватывается без перезапуска
+      - ../deploy/secretary-prompt.md:/etc/office/secretary-prompt.md:ro
+    depends_on:
+      recordings-init:
+        condition: service_completed_successfully
 
 volumes:
   caddy_data:

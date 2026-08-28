@@ -1,8 +1,8 @@
 # План выполнения — «Виртуальный офис»
 
-Лёгкий корпоративный голосовой хаб команды: одна постоянная комната, сотрудники в config.yaml, запись встреч по кнопке. Развёртывание — `docker compose up` на корпоративном сервере. AI-секретарь — отдельный эпик, в MVP не входит.
+Лёгкий корпоративный голосовой хаб команды: одна постоянная комната, сотрудники в config.yaml, запись встреч по кнопке. Развёртывание — `docker compose up` на корпоративном сервере. AI-секретарь — эпик 2, в работе (§9).
 
-Глоссарий: [CONTEXT.md](../CONTEXT.md). Зафиксированные решения: [docs/adr/](adr/0001-config-instead-of-db.md), [adr/0002-egress-audio-recording.md](adr/0002-egress-audio-recording.md), [adr/0003-tls-turn-scheme.md](adr/0003-tls-turn-scheme.md).
+Глоссарий: [CONTEXT.md](../CONTEXT.md). Зафиксированные решения: [docs/adr/](adr/0001-config-instead-of-db.md), [adr/0002-egress-audio-recording.md](adr/0002-egress-audio-recording.md), [adr/0003-tls-turn-scheme.md](adr/0003-tls-turn-scheme.md), [adr/0004-ai-summary-secretary.md](adr/0004-ai-summary-secretary.md).
 
 ---
 
@@ -17,6 +17,7 @@
 | Аватар | boringavatars, вариант Beam, палитра duotone. Случайный seed генерируется при первом входе, хранится в `data/avatars.json`. |
 | Комната | Одна постоянная (`office`), закрывается при опустении (auto-dispose). Вход = авто-подключение. |
 | Запись | Серверная, LiveKit Egress, audio-only RoomComposite → MP4 в volume (ADR-0002). Одна запись одновременно, кнопка глобальная. Статус клиентам — метаданные комнаты LiveKit (`roomMetadataChanged`); участники на стопе — sidecar-json у файла; источник правды — активные egress в LiveKit. Бип на старт/стоп. |
+| AI-сводки | Кнопка AI видна при идущей записи и заказывает сводку: флаг `summary` в sidecar записи (ADR-0004). Отдельный воркер-секретарь (`server/cmd/secretary`) разбирает такие записи STT → LLM и кладёт `{имя}.summary.json`; секреты — `.env`, не config.yaml. Сводка — в табе «Сводки». |
 | TLS | Публичный домен, Let's Encrypt; Caddy терминирует HTTPS для веба и wss LiveKit (ADR-0003). |
 | TURN | Встроенный в LiveKit, обязателен (есть удалённые участники). TURN/TLS на поддомене `turn.<домен>`, порты 3478/UDP + 5349/TCP. |
 | Деплой | Docker compose на одном корпсервере. `livekit-server` — host network. |
@@ -30,9 +31,13 @@
                                           │  ├──► redis (:6379)  ← только очередь Egress
                                           │  └──► livekit-egress ─► data/recordings/*.mp4
                                           └──► TURN/TLS :5349, TURN/UDP :3478 (встроенный)
+
+secretary ──► data/recordings/ (mp4 + sidecar с флагом summary) ──► STT/LLM API
+                └─► пишет {имя}.summary.json ← backend отдаёт в /api/recordings
 ```
 
 - `backend` раздаёт статику фронтенда (одна точка входа для Caddy).
+- `secretary` (воркер AI-сводок, `server/cmd/secretary`): сканирует записи с флагом `summary`, STT → LLM, результат в `{имя}.summary.json` рядом с mp4. Секреты — `.env` (env_file), config.yaml не читает.
 - `livekit-server` на host network (доки LiveKit рекомендуют для производительности UDP).
 - Volume `data/`: `avatars.json`, `recordings/` (общий для egress и backend).
 - Конфиг читается при старте; изменение → `docker compose restart backend`.
@@ -45,6 +50,7 @@
 | livekit-server | livekit/livekit-server | WebRTC-медиасервер + встроенный TURN |
 | redis | redis:7-alpine | Очередь заданий Egress (это не «БД продукта») |
 | livekit-egress | livekit/egress | Запись комнаты в MP4 |
+| secretary | сборка из `server/` (тот же образ) | AI-сводки: разбор записей со `summary` (STT → LLM), `{имя}.summary.json` |
 | backend | сборка из `server/` | Авторизация, токены, Egress API, раздача файлов и статики |
 
 ## 3. Сеть и порты
@@ -76,14 +82,28 @@ employees:
     password_hash: $2a$10$...   # генерится `go run ./cmd/hashpass`
 ```
 
+`config.yaml` в .gitignore — в репозитории лежит шаблон `config.example.yaml` (`cp config.example.yaml config.yaml`).
+
+Секретарь (AI-сводки) настраивается не config.yaml, а `.env` (шаблон `.env.example`, подхватывается compose через env_file):
+
+```env
+STT_BASE_URL=…   # OpenAI-совместимый STT, /v1/audio/transcriptions
+STT_API_KEY=…
+STT_MODEL=whisper-1
+LLM_BASE_URL=…   # OpenAI-совместимый LLM, /v1/chat/completions
+LLM_API_KEY=…
+LLM_MODEL=…
+```
+
 ## 5. API бэкенда
 
 | Метод | Путь | Описание |
 |---|---|---|
 | POST | `/api/login` | `{login, password}` → `{token, room, name, avatar: {seed}}`. При первом входе создаёт seed аватара. |
-| POST | `/api/recording/start` | Старт записи → `{egress_id}`. 409, если запись уже идёт. |
+| POST | `/api/recording/start` | Старт записи → `{egress_id}`. Тело `{login}`. 409, если запись уже идёт. |
+| POST | `/api/recording/summary` | Заказ AI-сводки для идущей записи (кнопка AI). Флаг в sidecar + метаданные комнаты. 409, если записи нет. |
 | POST | `/api/recording/stop` | Стоп активной записи. |
-| GET | `/api/recordings` | Список файлов `{name, size, started_at, started_by}`. |
+| GET | `/api/recordings` | Список файлов `{name, size, started_at, started_by, participants, summary, ai_status, ai_error, summary_text}`. |
 | GET | `/api/recordings/{name}` | Скачивание MP4. |
 | GET | `/api/healthz` | Живучесть. |
 
@@ -135,14 +155,20 @@ employees:
 - `empty_timeout` комнаты — подобрать дефолт LiveKit.
 - Удаление/ротация записей — не делаем, пока не попросят.
 
-## 9. Отложено — Эпик 2 (AI-секретарь)
+## 9. Эпик 2 — AI-секретарь (в работе)
 
-Саммари встреч, транскрипция (STT), хранение транскриптов, композит видео+экран в записи, роли, история с поиском.
+### Сделано
+- [x] AI-кнопка в панели звонка: появляется при идущей записи и заказывает сводку для неё. Флаг `summary` — в sidecar записи (переживает стоп и рестарты), для UI — метаданные комнаты (ADR-0004).
+- [x] Воркер-секретарь `server/cmd/secretary`: отдельный процесс/сервис, STT → LLM → `{имя}.summary.json`; статусы, ретраи (3 попытки), атомарная запись.
+- [x] Сводка в табе «Сводки» у записи; секреты — `.env` (шаблон `.env.example`).
+
+### Отложено
+Транскрипт в UI, история с поиском, роли, композит видео+экран в записи.
 
 ## 10. Риски
 
 | Риск | Митигация |
 |---|---|
 | Корпоративный файрвол режет TURN-порты | Рубильник: TURN/TLS на 443 со SNI-роутингом (ADR-0003) |
-| Пароли закоммитят в репозиторий | bcrypt-хэши + README-предупреждение |
+| Пароли и ключи закоммитят в репозиторий | `config.yaml` и `.env` в .gitignore; в гите — шаблоны `config.example.yaml`/`.env.example`; пароли — bcrypt |
 | Запись «одна на комнату» не устроит | Уже выбран egress — расширяется до композита без смены архитектуры |
