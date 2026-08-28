@@ -77,7 +77,6 @@ services:
     build:
       context: ..
       dockerfile: server/Dockerfile
-    image: office
     restart: unless-stopped
     ports:
       - "127.0.0.1:8090:8090"
@@ -98,7 +97,9 @@ services:
   # entrypoint; смотрит записи с флагом summary и разбирает их STT → LLM.
   # Секреты — .env (env_file), каталог записей — общий volume.
   secretary:
-    image: office
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
     restart: unless-stopped
     entrypoint: ["office-secretary"]
     environment:
