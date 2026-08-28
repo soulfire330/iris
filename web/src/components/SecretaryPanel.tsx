@@ -10,6 +10,15 @@ import { cn } from '@/lib/utils'
 
 export type PanelTab = 'summaries' | 'chat'
 
+// Остановленная запись, пока egress дописывает файл: строка «Сейчас» живёт
+// с лоадером до появления файла в списке (сопоставление по name).
+export interface SavingRecording {
+  name: string
+  startedAt: Date
+  elapsedMs: number
+  ai: boolean
+}
+
 // Правая колонка секретаря. Сводки придут с эпиком AI-секретаря; чат — живой,
 // поверх data channel LiveKit (см. useChat).
 export function SecretaryPanel({
@@ -21,6 +30,11 @@ export function SecretaryPanel({
   onSend,
   recordings,
   recording,
+  aiSummary,
+  recStartedAt,
+  recElapsedMs,
+  saving,
+  participantCount,
   summariesOpen,
   summariesBlocked,
   onAllSummaries,
@@ -33,6 +47,15 @@ export function SecretaryPanel({
   onSend: (text: string) => void
   recordings: RecordingFile[]
   recording: boolean
+  // Живая запись — её строка вверху «Прошлых встреч»: время старта записи,
+  // её длительность, участники; aiSummary — заказана ли сводка («появится
+  // после звонка»).
+  aiSummary: boolean
+  recStartedAt: Date | null
+  recElapsedMs: number
+  // Остановленная запись в процессе сохранения (спиннер вместо точки записи).
+  saving: SavingRecording | null
+  participantCount: number
   // «Все сводки»: раскладка живёт в RoomPage, кнопка — тумблер. Пока идёт
   // демонстрация экрана, сводки не открыть (демонстрация приоритетнее).
   summariesOpen: boolean
@@ -88,6 +111,11 @@ export function SecretaryPanel({
     return parts.join(' · ')
   }
 
+  // Строка сохранения видна, пока файл не появился в списке. Вычисляем в
+  // рендере, а не эффектом: иначе на один кадр «Сейчас» и «Сегодня» видны
+  // вместе, потом строка исчезает и список дёргается вверх.
+  const savingVisible = saving != null && !recordings.some((r) => r.name === saving.name)
+
   return (
     <aside className="flex h-full min-h-0 w-[300px] flex-col border-l border-border bg-card">
       <div className="flex flex-none border-b border-border">
@@ -118,21 +146,73 @@ export function SecretaryPanel({
               <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-neutral-600">
                 Прошлые встречи
               </span>
+              {/* Живая запись — включение в историю на самом верху: «Сейчас,
+                  время старта / таймер», участники и красная точка. В список
+                  прошлых не попадает, пока egress пишет файл. */}
+              {recording && recStartedAt && (
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-[12px] font-medium">
+                      Сейчас, {formatTime(recStartedAt.getTime())}
+                    </span>
+                    <div className="flex flex-none items-center gap-2.5">
+                      {/* Длительность записи · участники — как у прошлых встреч. */}
+                      <span className="font-mono text-[10px] text-neutral-500">
+                        {Math.floor(recElapsedMs / 60_000)} мин · {participantCount}
+                      </span>
+                      {/* Красная точка — на месте кнопки скачивания у прошлых
+                          встреч: тот же слот h-7 w-7, чтобы строка стояла ровно. */}
+                      <span className="flex h-7 w-7 flex-none items-center justify-center">
+                        <span className="h-2 w-2 flex-none animate-rec rounded-full bg-recording" aria-hidden />
+                      </span>
+                    </div>
+                  </div>
+                  {aiSummary && (
+                    <SummaryBlock
+                      status=""
+                      error=""
+                      text=""
+                      waitingText="AI-сводка появится после звонка."
+                    />
+                  )}
+                </div>
+              )}
+              {/* Сохранение после стопа: та же строка, но красная точка становится
+                  серой, пока файл не появился в списке (тогда строка без сдвига
+                  уступает место «Сегодня» — геометрия та же). */}
+              {savingVisible && saving && (
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-[12px] font-medium">
+                      Сейчас, {formatTime(saving.startedAt.getTime())}
+                    </span>
+                    <div className="flex flex-none items-center gap-2.5">
+                      <span className="font-mono text-[10px] text-neutral-500">
+                        {Math.floor(saving.elapsedMs / 60_000)} мин · {participantCount}
+                      </span>
+                      <span className="flex h-7 w-7 flex-none items-center justify-center">
+                        <span className="h-2 w-2 flex-none rounded-full bg-neutral-600" aria-hidden />
+                      </span>
+                    </div>
+                  </div>
+                  {saving.ai && (
+                    <SummaryBlock
+                      status=""
+                      error=""
+                      text=""
+                      waitingText="AI-сводка появится после звонка."
+                    />
+                  )}
+                </div>
+              )}
               {recordings.length === 0 ? (
                 <p className="text-[12px] leading-relaxed text-neutral-500">
                   {recording
-                    ? 'Запись идёт — файл появится в списке после остановки.'
+                    ? 'Записей пока нет.'
                     : 'Записей пока нет — нажмите кнопку записи в панели звонка.'}
                 </p>
               ) : (
                 <>
-                  {/* Текущая запись в список не попадает, пока egress пишет файл —
-                      список прошлых встреч при этом не прячем. */}
-                  {recording && (
-                    <p className="text-[12px] leading-relaxed text-neutral-500">
-                      Идёт запись — появится в списке после остановки.
-                    </p>
-                  )}
                   {recordings.map((r) => (
                     <div key={r.name} className="flex flex-col gap-1.5">
                       {/* Запись — не карточка: строка списка. Дата слева, справа —
@@ -256,11 +336,14 @@ export function SummaryBlock({
   error,
   text,
   large = false,
+  waitingText = 'Готовится…',
 }: {
   status: string
   error: string
   text: string
   large?: boolean
+  // Что писать вместо «готовится…», когда статус ещё не done (живая запись).
+  waitingText?: string
 }) {
   const [open, setOpen] = useState(large)
   const bar = <div className="w-px flex-none self-stretch bg-ai" aria-hidden />
@@ -280,7 +363,7 @@ export function SummaryBlock({
             {status === 'error' ? (
               <span className="text-warn">не удалась: {error}</span>
             ) : (
-              <span className="text-neutral-500">готовится…</span>
+              <span className="animate-breathe text-neutral-500">{waitingText}</span>
             )}
           </div>
         </div>

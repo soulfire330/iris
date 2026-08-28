@@ -12,6 +12,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -31,11 +32,23 @@ import (
 // обязаны совпадать у egress (пишет) и бэкенда (список/скачивание).
 const egressOutDir = "/out/recordings"
 
-// Метаданные комнаты при активной записи; пустая строка — нет. Summary-вариант
-// заказывает AI-сводку (эпик «Секретарь»): тот же egress, но sidecar записи
-// получает флаг summary — по нему воркер-секретарь найдёт файл после стопа.
-const recRoomMeta = `{"recording":true}`
-const recRoomMetaSummary = `{"recording":true,"summary":true}`
+// Метаданные комнаты при активной записи; пустая строка — нет. rec_started_at
+// (RFC3339, серверное время) — старт записи: фронт показывает его в живой
+// строке «Сейчас, 11:17 · 49 мин» и считает длительность от него. rec_name —
+// имя файла: по нему фронт сопоставляет запись в списке и держит строку
+// «сохранение» ровно до появления файла. Summary-вариант заказывает AI-сводку
+// (эпик «Секретарь»): тот же egress, но sidecar записи получает флаг summary —
+// по нему воркер-секретарь найдёт файл после стопа.
+func recRoomMeta(name string, startedAt time.Time) string {
+	return fmt.Sprintf(
+		`{"recording":true,"rec_started_at":%q,"rec_name":%q}`,
+		startedAt.Format(time.RFC3339), name,
+	)
+}
+
+func recRoomMetaSummary(name, startedAt string) string {
+	return fmt.Sprintf(`{"recording":true,"summary":true,"rec_started_at":%q,"rec_name":%q}`, startedAt, name)
+}
 
 // recNameRe — имя файла записи: 2025-06-11_14-30_ivanov.mp4, коллизии — суффикс -2.
 var recNameRe = regexp.MustCompile(`^[\w.-]+\.mp4$`)
@@ -137,7 +150,7 @@ func (a *App) handleRecordingStart(w http.ResponseWriter, r *http.Request) {
 	// Метаданные комнаты — единственный канал статуса для клиентов. Если не
 	// обновились, egress уже идёт, но тега ни у кого не будет — лог на потом.
 	if _, err := a.livekit.UpdateRoomMetadata(ctx, &livekit.UpdateRoomMetadataRequest{
-		Room: a.cfg.Server.Room, Metadata: recRoomMeta,
+		Room: a.cfg.Server.Room, Metadata: recRoomMeta(name, time.Now()),
 	}); err != nil {
 		log.Printf("recording: метаданные комнаты не обновились: %v", err)
 	}
@@ -262,8 +275,10 @@ func (a *App) handleRecordingSummary(w http.ResponseWriter, r *http.Request) {
 		_ = os.WriteFile(path, b, 0o644)
 	}
 
+	// Метаданные: summary-вариант, но rec_started_at сохраняем — клиент живёт по
+	// нему (длительность записи), терять нельзя.
 	if _, err := a.livekit.UpdateRoomMetadata(ctx, &livekit.UpdateRoomMetadataRequest{
-		Room: a.cfg.Server.Room, Metadata: recRoomMetaSummary,
+		Room: a.cfg.Server.Room, Metadata: recRoomMetaSummary(name, meta.StartedAt),
 	}); err != nil {
 		log.Printf("recording: метаданные комнаты не обновились: %v", err)
 	}

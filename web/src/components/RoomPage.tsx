@@ -6,7 +6,7 @@ import { CallBar } from '@/components/CallBar'
 import { ParticipantTile } from '@/components/ParticipantTile'
 import { RoomHeader } from '@/components/RoomHeader'
 import { ScreenView } from '@/components/ScreenView'
-import { SecretaryPanel, type PanelTab } from '@/components/SecretaryPanel'
+import { SecretaryPanel, type PanelTab, type SavingRecording } from '@/components/SecretaryPanel'
 import { SummariesView } from '@/components/SummariesView'
 import { useChat } from '@/hooks/useChat'
 import { DEFAULT_DSP, useRoom } from '@/hooks/useRoom'
@@ -77,12 +77,28 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
   // egress), поэтому тег и кнопка синхронны у всех участников. При
   // подключении берём текущее значение — запись могла идти до нас.
   // aiSummary — запись заказана AI-кнопкой (со сводкой, эпик «Секретарь»).
+  // recStartedAt — серверное время старта записи из тех же метаданных: по нему
+  // панель показывает «Сейчас, 11:17 · 49 мин» (длительность именно записи,
+  // не комнаты). recName — имя файла: по нему сопоставляем запись в списке.
   const [recording, setRecording] = useState(false)
   const [aiSummary, setAiSummary] = useState(false)
+  const [recStartedAt, setRecStartedAt] = useState<Date | null>(null)
+  const [recName, setRecName] = useState<string | null>(null)
   useEffect(() => {
     const sync = (meta: string) => {
       setRecording(meta.includes('"recording":true'))
       setAiSummary(meta.includes('"summary":true'))
+      let started: Date | null = null
+      let name: string | null = null
+      try {
+        const m = JSON.parse(meta)
+        if (m?.rec_started_at) started = new Date(m.rec_started_at)
+        if (m?.rec_name) name = m.rec_name
+      } catch {
+        // Не JSON — записи нет (пустая строка), старт не показываем.
+      }
+      setRecStartedAt(started)
+      setRecName(name)
     }
     sync(room.metadata ?? '')
     room.on(RoomEvent.RoomMetadataChanged, sync)
@@ -194,6 +210,32 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
     return () => clearInterval(t)
   }, [])
   const elapsed = startedAt ? Math.max(0, now + clockOffsetMs - startedAt.getTime()) : 0
+  // Длительность идущей записи — от её серверного старта; 0, пока старта нет.
+  const recElapsedMs = recStartedAt ? Math.max(0, now + clockOffsetMs - recStartedAt.getTime()) : 0
+
+  // Сохранение после стопа: egress дописывает файл секунды, и список про него
+  // узнаёт не сразу — держим строку с лоадером, пока файл не появится в списке
+  // (сопоставление по rec_name из метаданных). 60с потолок: если egress файл не
+  // дописал вовсе (нет аудио — abort), строку убираем, а не крутим вечность.
+  const [saving, setSaving] = useState<SavingRecording | null>(null)
+  const recRef = useRef<SavingRecording | null>(null)
+  useEffect(() => {
+    if (recording && recStartedAt && recName) {
+      recRef.current = { name: recName, startedAt: recStartedAt, elapsedMs: recElapsedMs, ai: aiSummary }
+    } else if (!recording && recRef.current) {
+      setSaving(recRef.current)
+      recRef.current = null
+    }
+  }, [recording, recStartedAt, recName, aiSummary, recElapsedMs])
+  useEffect(() => {
+    if (!saving) return
+    if (recordings.some((r) => r.name === saving.name)) {
+      setSaving(null)
+      return
+    }
+    const t = setTimeout(() => setSaving(null), 60_000)
+    return () => clearTimeout(t)
+  }, [saving, recordings])
 
   const members: Member[] = useMemo(() => {
     const list: Member[] = []
@@ -287,7 +329,10 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
     if (!local) return
     setMicOn(on)
     try {
-      if (on) await local.setMicrophoneEnabled(true)
+      // dtx:false — без этого egress не получает ни одного аудиокадра в тишине
+      // (Opus DTX не шлёт пакеты) и на стопе падает «Start signal not received»:
+      // файла нет, встреча исчезает из истории. Тишина теперь пишется всегда.
+      if (on) await local.setMicrophoneEnabled(true, {}, { dtx: false })
       else {
         const pub = local.getTrackPublication(Track.Source.Microphone)
         if (pub?.track) await local.unpublishTrack(pub.track)
@@ -504,6 +549,11 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
             onSend={chat.send}
             recordings={recordings}
             recording={recording}
+            aiSummary={aiSummary}
+            recStartedAt={recStartedAt}
+            recElapsedMs={recElapsedMs}
+            saving={saving}
+            participantCount={members.length}
             summariesOpen={summariesOpen}
             summariesBlocked={!!sharer}
             onAllSummaries={() => setSummariesOpen((o) => !o)}
@@ -519,6 +569,11 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
               onSend={chat.send}
               recordings={recordings}
               recording={recording}
+              aiSummary={aiSummary}
+              recStartedAt={recStartedAt}
+              recElapsedMs={recElapsedMs}
+              saving={saving}
+              participantCount={members.length}
               summariesOpen={summariesOpen}
               summariesBlocked={!!sharer}
               onAllSummaries={() => setSummariesOpen((o) => !o)}
@@ -539,6 +594,11 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
               onSend={chat.send}
               recordings={recordings}
               recording={recording}
+              aiSummary={aiSummary}
+              recStartedAt={recStartedAt}
+              recElapsedMs={recElapsedMs}
+              saving={saving}
+              participantCount={members.length}
               summariesOpen={summariesOpen}
               summariesBlocked={!!sharer}
               onAllSummaries={() => setSummariesOpen((o) => !o)}
