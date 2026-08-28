@@ -77,6 +77,9 @@ services:
     build:
       context: ..
       dockerfile: server/Dockerfile
+      # Сеть хоста: у bun-стейджа нет fallback на IPv4, а в bridge-сети
+      # buildkit IPv6 недоступен — bun install висит (npm резолвится в AAAA).
+      network: host
     restart: unless-stopped
     ports:
       - "127.0.0.1:8090:8090"
@@ -100,6 +103,8 @@ services:
     build:
       context: ..
       dockerfile: server/Dockerfile
+      # См. backend: bun install в bridge-сети buildkit висит на IPv6.
+      network: host
     restart: unless-stopped
     entrypoint: ["office-secretary"]
     environment:
