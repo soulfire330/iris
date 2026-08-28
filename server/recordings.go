@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -343,10 +344,72 @@ type recFile struct {
 	SummaryText string `json:"summary_text"`
 }
 
+// dateRange — date_from/date_to из query: YYYY-MM-DD (весь день) или RFC3339
+// (точный момент). date_to как дата — включительно по конец дня. Пустые
+// значения — без границы.
+func dateRange(q url.Values) (from, to time.Time, err error) {
+	parse := func(v string) (time.Time, bool, error) {
+		if v == "" {
+			return time.Time{}, false, nil
+		}
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			return t, false, nil
+		}
+		t, err := time.ParseInLocation("2006-01-02", v, time.Local)
+		if err != nil {
+			return time.Time{}, false, errors.New("ожидается YYYY-MM-DD или RFC3339")
+		}
+		return t, true, nil
+	}
+	from, _, err = parse(q.Get("date_from"))
+	if err != nil {
+		return
+	}
+	var toDay bool
+	to, toDay, err = parse(q.Get("date_to"))
+	if err != nil {
+		return
+	}
+	if toDay {
+		to = to.Add(24 * time.Hour) // дата — включительно по конец дня
+	}
+	if !from.IsZero() && !to.IsZero() && !from.Before(to) {
+		err = errors.New("date_from позже date_to")
+	}
+	return
+}
+
+// filterByDate — отсекает записи вне [from, to). from/to нулевые — границы
+// нет. Запись без распознаваемой даты (не бывает: started_at всегда
+// RFC3339) при активном фильтре исключается.
+func filterByDate(list []recFile, from, to time.Time) []recFile {
+	out := list[:0]
+	for _, item := range list {
+		st, err := time.Parse(time.RFC3339, item.StartedAt)
+		if err != nil {
+			continue
+		}
+		if !from.IsZero() && st.Before(from) {
+			continue
+		}
+		if !to.IsZero() && !st.Before(to) {
+			continue
+		}
+		out = append(out, item)
+	}
+	return out
+}
+
 // handleRecordingsList — GET /api/recordings. Файлы из volume; метаданные — из
 // sidecar-json, при его отсутствии (запись оборвалась сама) — из имени файла.
-// Идущую запись не показываем: mp4 ещё пишется.
+// Идущую запись не показываем: mp4 ещё пишется. date_from/date_to — фильтр
+// по дате звонка (YYYY-MM-DD или RFC3339), работает и в публичном API.
 func (a *App) handleRecordingsList(w http.ResponseWriter, r *http.Request) {
+	from, to, err := dateRange(r.URL.Query())
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "невалидный date_from/date_to: " + err.Error()})
+		return
+	}
 	ctx := r.Context()
 	active, err := a.activeRecording(ctx)
 	if err != nil {
@@ -407,6 +470,7 @@ func (a *App) handleRecordingsList(w http.ResponseWriter, r *http.Request) {
 		}
 		out = append(out, item)
 	}
+	out = filterByDate(out, from, to)
 	sort.Slice(out, func(i, j int) bool { return out[i].Name > out[j].Name })
 	writeJSON(w, http.StatusOK, out)
 }

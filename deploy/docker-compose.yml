@@ -81,6 +81,9 @@ services:
       - ../data:/etc/office/data
       - ../web/dist:/etc/office/web-dist:ro
     command: ["-config", "/etc/office/config.yaml"]
+    env_file:
+      - path: ../.env
+        required: false
     logging: *log-rotate
 
   # Секретарь: воркер AI-сводок (server/cmd/secretary). Тот же образ, другой

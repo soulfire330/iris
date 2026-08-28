@@ -28,10 +28,11 @@ func main() {
 	}
 
 	app := &App{
-		cfg:     cfg,
-		limits:  NewLoginLimiter(),
-		livekit: livekitService(cfg.Server.LiveKit.Host, cfg.Server.LiveKit.APIKey, cfg.Server.LiveKit.APISecret),
-		egress:  egressService(cfg.Server.LiveKit.Host, cfg.Server.LiveKit.APIKey, cfg.Server.LiveKit.APISecret),
+		cfg:       cfg,
+		limits:    NewLoginLimiter(),
+		publicKey: os.Getenv("PUBLIC_API_KEY"),
+		livekit:   livekitService(cfg.Server.LiveKit.Host, cfg.Server.LiveKit.APIKey, cfg.Server.LiveKit.APISecret),
+		egress:    egressService(cfg.Server.LiveKit.Host, cfg.Server.LiveKit.APIKey, cfg.Server.LiveKit.APISecret),
 	}
 
 	mux := http.NewServeMux()
@@ -46,6 +47,11 @@ func main() {
 	mux.HandleFunc("POST /api/recording/summary", app.handleRecordingSummary)
 	mux.HandleFunc("GET /api/recordings", app.handleRecordingsList)
 	mux.HandleFunc("GET /api/recordings/{name}", app.handleRecordingDownload)
+	// Публичный API: те же данные (список со сводками, mp4), но под ключом
+	// PUBLIC_API_KEY. Статус комнаты — отдельный эндпоинт для дашбордов.
+	mux.HandleFunc("GET /api/public/recordings", app.publicAuth(app.handleRecordingsList))
+	mux.HandleFunc("GET /api/public/recordings/{name}", app.publicAuth(app.handleRecordingDownload))
+	mux.HandleFunc("GET /api/public/status", app.publicAuth(app.handlePublicStatus))
 	mux.Handle("/", http.FileServer(http.Dir(cfg.Server.WebDir)))
 
 	slog.Info("office: listening", "addr", cfg.Server.Listen)

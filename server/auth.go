@@ -13,10 +13,13 @@ import (
 )
 
 type App struct {
-	cfg     *Config
-	limits  *LoginLimiter
-	livekit *lksdk.RoomServiceClient
-	egress  *lksdk.EgressClient
+	cfg    *Config
+	limits *LoginLimiter
+	// publicKey — ключ публичного API (PUBLIC_API_KEY из env); пусто — фича
+	// выключена, /api/public/* отвечает 404.
+	publicKey string
+	livekit   *lksdk.RoomServiceClient
+	egress    *lksdk.EgressClient
 	// recMu — одна запись на комнату: старт/стоп сериализуем, а источник
 	// правды — активные egress в LiveKit, не память.
 	recMu sync.Mutex
