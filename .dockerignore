@@ -1,0 +1,8 @@
+.git
+data
+config.yaml
+.env
+*.log
+web/dist
+web/node_modules
+server/office

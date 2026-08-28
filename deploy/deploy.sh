@@ -13,10 +13,9 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 command -v docker >/dev/null || { echo "Нет docker" >&2; exit 1; }
-command -v bun >/dev/null || { echo "Нет bun" >&2; exit 1; }
 command -v openssl >/dev/null || { echo "Нет openssl" >&2; exit 1; }
 [ -f config.yaml ] || {
-  echo "Нет config.yaml: cp config.example.yaml config.yaml, впиши сотрудников (пароль: bun hashpass 'пароль')" >&2
+  echo "Нет config.yaml: cp config.example.yaml config.yaml, впиши сотрудников (пароль: scripts/hashpass.sh 'пароль')" >&2
   exit 1
 }
 
@@ -52,7 +51,6 @@ if ! grep -q '^PUBLIC_API_KEY=.\+' .env; then
   echo "Сгенерирован PUBLIC_API_KEY (в .env)."
 fi
 
-bun web:build
 docker compose -f deploy/docker-compose.yml up -d --build
 
 echo

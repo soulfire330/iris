@@ -6,7 +6,7 @@
 
 ## Что нужно
 
-- Linux-сервер с Docker и docker compose (тестировалось на `bun stack:up`).
+- Linux-сервер с Docker и docker compose (тестировалось на `./scripts/stack.sh up`).
 - Домен с двумя A-записями на IP сервера:
 
 | Запись | Зачем |
@@ -63,11 +63,11 @@ sudo ufw allow 5349/tcp          # TURN
 1. **DNS**: A-записи `hub.<домен>` и `turn.<домен>` → IP сервера, дождаться
    пропагации (`dig hub.<домен>`).
 2. **Домен в Caddy**: заменить `example.com` на свой в `deploy/Caddyfile`.
-3. **Сотрудники**: логины/пароли в `config.yaml` (`bun hashpass 'пароль'`).
+3. **Сотрудники**: логины/пароли в `config.yaml` (`./scripts/hashpass.sh 'пароль'`).
 4. **Секреты**: при первом деплое `deploy/deploy.sh` сам сменит dev-ключи
    livekit и сгенерирует `PUBLIC_API_KEY` в `.env`; STT/LLM ключи для
    секретаря впиши в `.env` вручную (шаблон `.env.example`).
-5. **Деплой**: `bash deploy/deploy.sh` — соберёт фронт и поднимет стек.
+5. **Деплой**: `bash deploy/deploy.sh` — соберёт фронт (в Docker-образе) и поднимет стек.
 6. **TURN** (если есть удалённые участники): раскомментировать блок `turn:` в
    `deploy/livekit.yaml`, поправить пути к серту, `bash deploy/deploy.sh` ещё раз.
 

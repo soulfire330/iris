@@ -13,9 +13,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 command -v docker >/dev/null || { echo "Нет docker" >&2; exit 1; }
-command -v bun >/dev/null || { echo "Нет bun" >&2; exit 1; }
 [ -f config.yaml ] || {
-  echo "Нет config.yaml: cp config.example.yaml config.yaml, впиши сотрудников (пароль: bun hashpass 'пароль')" >&2
+  echo "Нет config.yaml: cp config.example.yaml config.yaml, впиши сотрудников (пароль: scripts/hashpass.sh 'пароль')" >&2
   exit 1
 }
 
@@ -39,7 +38,6 @@ https://$IP {
 }
 EOF
 
-bun web:build
 docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.self-signed.yml up -d --build
 
 echo

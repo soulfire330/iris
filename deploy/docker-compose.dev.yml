@@ -1,4 +1,4 @@
-# Dev-инфраструктура (bun infra:up): redis + livekit + egress для локальной
+# Dev-инфраструктура (scripts/infra.sh up): redis + livekit + egress для локальной
 # разработки. Отдельный файл, а не override prod-стека: в dev egress пишет
 # в репозиторный data/recordings (бэкенд и секретарь запускаются на хосте),
 # в проде — в named volume recordings (docker-compose.yml).

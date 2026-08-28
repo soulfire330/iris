@@ -75,18 +75,19 @@ services:
 
   backend:
     build:
-      context: ../server
+      context: ..
+      dockerfile: server/Dockerfile
     image: office
     restart: unless-stopped
     ports:
       - "127.0.0.1:8090:8090"
     volumes:
-      # Пути в config.yaml относительные (./data, ./web-dist) — монтируем всё
-      # под /etc/office, чтобы они резолвились в смонтированные каталоги.
+      # Путь в config.yaml относительный (./data) — монтируем конфиг под
+      # /etc/office, чтобы он резолвился в смонтированный каталог.
+      # web-dist — в образе (см. server/Dockerfile), web_dir в конфиге абсолютный.
       # Записи — named volume recordings (общий с egress и secretary).
       - ../config.yaml:/etc/office/config.yaml:ro
       - recordings:/etc/office/data/recordings
-      - ../web/dist:/etc/office/web-dist:ro
     command: ["-config", "/etc/office/config.yaml"]
     env_file:
       - path: ../.env

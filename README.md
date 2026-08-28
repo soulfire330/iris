@@ -19,25 +19,25 @@ data/              записи в dev (в проде — named volume recording
 
 ```bash
 cp config.example.yaml config.yaml   # один раз, затем впиши сотрудников
-cd web && bun install                # один раз
-cd .. && bun dev                     # инфраструктура + бэкенд + фронт, http://localhost:5173
+cd web && bun install                # один раз (bun нужен только для web/)
+cd .. && ./scripts/dev.sh            # инфраструктура + бэкенд + фронт, http://localhost:5173
 ```
 
-Сотрудники: внеси логин/имя в `config.yaml`, пароль сгенерируй `bun hashpass 'пароль'` и вставь хэш.
+Сотрудники: внеси логин/имя в `config.yaml`, пароль сгенерируй `./scripts/hashpass.sh 'пароль'` и вставь хэш.
 
-## Скрипты (из корня репозитория, `bun <скрипт>`)
+## Скрипты (из корня репозитория)
 
 | Скрипт | Что делает |
 |---|---|
-| `bun dev` | инфраструктура + бэкенд + vite (параллельно, Ctrl+C останавливает всё) |
-| `bun infra:up` / `bun infra:down` | поднять/погасить valkey + livekit-server + egress |
-| `bun infra:logs` | логи livekit-server |
-| `bun backend` | запустить Go-бэкенд (порт 8090) |
-| `bun web:dev` | vite dev-сервер (5173; проксирует /api и /rtc на бэкенд/livekit) |
-| `bun web:build` | продакшн-сборка фронта в web/dist |
-| `bun hashpass 'пароль'` | bcrypt-хэш для config.yaml |
-| `bun secretary` | воркер AI-сводок локально (нужен `.env` с STT/LLM) |
-| `bun stack:up` / `bun stack:down` | полный compose-стек (Caddy + бэкенд в контейнере) — для прода |
+| `./scripts/dev.sh` | инфраструктура + бэкенд + vite (параллельно, Ctrl+C останавливает всё) |
+| `./scripts/infra.sh up` / `down` | поднять/погасить valkey + livekit-server + egress |
+| `./scripts/infra.sh logs` | логи livekit-server |
+| `./scripts/backend.sh` | запустить Go-бэкенд (порт 8090) |
+| `./scripts/web.sh dev` | vite dev-сервер (5173; проксирует /api и /rtc на бэкенд/livekit) |
+| `./scripts/web.sh build` | продакшн-сборка фронта в web/dist |
+| `./scripts/hashpass.sh 'пароль'` | bcrypt-хэш для config.yaml |
+| `./scripts/secretary.sh` | воркер AI-сводок локально (нужен `.env` с STT/LLM) |
+| `./scripts/stack.sh up` / `down` | полный compose-стек (Caddy + бэкенд в контейнере) — для прода |
 
 В dev микрофон работает на `localhost` (secure context), LiveKit доступен напрямую: `ws://localhost:7880`. Caddy не нужен до Фазы 4.
 
@@ -66,7 +66,7 @@ LLM_API_KEY=…
 LLM_MODEL=…
 ```
 
-Локально секретарь запускается вместе с `bun dev` (или отдельно: `bun secretary`; переменные — из `.env`). В compose секретарь поднимается сам с `env_file: ../.env`; без `.env` он ждёт настройки, остальной стек работает.
+Локально секретарь запускается вместе с `./scripts/dev.sh` (или отдельно: `./scripts/secretary.sh`; переменные — из `.env`). В compose секретарь поднимается сам с `env_file: ../.env`; без `.env` он ждёт настройки, остальной стек работает.
 
 Системный промпт секретаря — редактируемый файл `deploy/secretary-prompt.md` (правки подхватываются без перезапуска воркера); участники встречи добавляются к промпту автоматически.
 
@@ -78,4 +78,4 @@ LLM_MODEL=…
 
 Подробная инструкция (домены, порты, TLS, TURN, файрвол): [docs/DEPLOY.md](docs/DEPLOY.md).
 
-Коротко: DNS `hub.<домен>` + `turn.<домен>` → сервер, домен в `deploy/Caddyfile`, сотрудники в `config.yaml`, ключи STT/LLM в `.env`, затем `bash deploy/deploy.sh` (соберёт фронт, сгенерирует секреты при первом запуске, поднимет стек). Нет домена — `bash deploy/deploy-self-signed.sh` (HTTPS по IP с self-signed сертификатом, только LAN). Снаружи открыты 80/443/tcp, 50000–60000/udp (+ TURN 3478/udp, 5349/tcp); 8090/7880/6379 наружу не выставляются.
+Коротко: DNS `hub.<домен>` + `turn.<домен>` → сервер, домен в `deploy/Caddyfile`, сотрудники в `config.yaml`, ключи STT/LLM в `.env`, затем `bash deploy/deploy.sh` (фронт собирается в Docker-образе, сгенерирует секреты при первом запуске, поднимет стек). Нет домена — `bash deploy/deploy-self-signed.sh` (HTTPS по IP с self-signed сертификатом, только LAN). Снаружи открыты 80/443/tcp, 50000–60000/udp (+ TURN 3478/udp, 5349/tcp); 8090/7880/6379 наружу не выставляются.

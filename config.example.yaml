@@ -10,10 +10,11 @@ server:
     api_secret: <secret>
   room: office
   data_dir: ./data
-  web_dir: ./web-dist
+  # Путь в образе office (см. server/Dockerfile); в dev фронт отдаёт vite.
+  web_dir: /usr/share/office/web-dist
 
 employees:
   - login: admin
     name: Админ
-    # пароль сгенерируй: bun hashpass 'пароль' (или go run ./server/cmd/hashpass 'пароль')
+    # пароль сгенерируй: scripts/hashpass.sh 'пароль' (или go run ./server/cmd/hashpass 'пароль')
     password_hash: $2a$10$...
