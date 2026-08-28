@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"path/filepath"
@@ -40,7 +41,11 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, err
 	}
 	var cfg Config
-	if err := yaml.Unmarshal(b, &cfg); err != nil {
+	// Строгий парсинг: опечатка в ключе (например, passord_hash) — ошибка при
+	// старте, а не молча пропущенный сотрудник без пароля.
+	dec := yaml.NewDecoder(bytes.NewReader(b))
+	dec.KnownFields(true)
+	if err := dec.Decode(&cfg); err != nil {
 		return nil, err
 	}
 	if cfg.Server.Room == "" || cfg.Server.LiveKit.Host == "" {
