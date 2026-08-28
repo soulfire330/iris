@@ -54,6 +54,11 @@ func recRoomMetaSummary(name, startedAt string) string {
 // recNameRe — имя файла записи: 2025-06-11_14-30_ivanov.mp4, коллизии — суффикс -2.
 var recNameRe = regexp.MustCompile(`^[\w.-]+\.mp4$`)
 
+// loginRe — логин из тела запроса, попадающий в имя файла записи и sidecar:
+// только безопасные для пути символы. Без проверки логин с «..» утаскивает
+// запись за пределы каталога (перезапись чужих файлов).
+var loginRe = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
+
 // egressService — клиент Egress API LiveKit (схему дописываем, как в room.go).
 func egressService(host, apiKey, apiSecret string) *lksdk.EgressClient {
 	if !strings.Contains(host, "://") {
@@ -114,6 +119,10 @@ func (a *App) handleRecordingStart(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Login == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "невалидный запрос"})
+		return
+	}
+	if !loginRe.MatchString(req.Login) {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "невалидный логин"})
 		return
 	}
 
@@ -224,9 +233,11 @@ func (a *App) handleRecordingStop(w http.ResponseWriter, r *http.Request) {
 		sort.Strings(participants)
 	}
 
-	// Имя файла — из результата egress (filename в общем volume).
-	name := ""
-	if len(info.FileResults) > 0 {
+	// Имя файла — своё с момента старта (activeRecName): StopEgress может
+	// вернуться до финализации, и FileResults тогда пуст. Результат egress —
+	// фолбэк (запись, начатая до рестарта бэкенда).
+	name := a.activeRecName
+	if name == "" && len(info.FileResults) > 0 {
 		name = filepath.Base(info.FileResults[0].Filename)
 	}
 	if name != "" && recNameRe.MatchString(name) {

@@ -40,13 +40,15 @@ func main() {
 		w.Write([]byte("ok"))
 	})
 	mux.HandleFunc("POST /api/login", app.handleLogin)
-	mux.HandleFunc("GET /api/room", app.handleRoom)
+	// Внутренний API — под LiveKit JWT (Bearer), см. requireToken. Публичные:
+	// login, healthz и аватары (картинки без заголовков).
+	mux.HandleFunc("GET /api/room", app.requireToken(app.handleRoom))
 	mux.HandleFunc("GET /api/avatar/{login}", app.handleAvatar)
-	mux.HandleFunc("POST /api/recording/start", app.handleRecordingStart)
-	mux.HandleFunc("POST /api/recording/stop", app.handleRecordingStop)
-	mux.HandleFunc("POST /api/recording/summary", app.handleRecordingSummary)
-	mux.HandleFunc("GET /api/recordings", app.handleRecordingsList)
-	mux.HandleFunc("GET /api/recordings/{name}", app.handleRecordingDownload)
+	mux.HandleFunc("POST /api/recording/start", app.requireToken(app.handleRecordingStart))
+	mux.HandleFunc("POST /api/recording/stop", app.requireToken(app.handleRecordingStop))
+	mux.HandleFunc("POST /api/recording/summary", app.requireToken(app.handleRecordingSummary))
+	mux.HandleFunc("GET /api/recordings", app.requireToken(app.handleRecordingsList))
+	mux.HandleFunc("GET /api/recordings/{name}", app.requireToken(app.handleRecordingDownload))
 	// Публичный API: те же данные (список со сводками, mp4), но под ключом
 	// PUBLIC_API_KEY. Статус комнаты — отдельный эндпоинт для дашбордов.
 	mux.HandleFunc("GET /api/public/recordings", app.publicAuth(app.handleRecordingsList))

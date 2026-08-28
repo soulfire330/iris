@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/livekit/protocol/auth"
 	lksdk "github.com/livekit/server-sdk-go/v2"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -95,6 +97,30 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		Avatar:   seed,
 		TokenTTL: int((6 * time.Hour).Seconds()),
 	})
+}
+
+// requireToken — внутренний API под LiveKit JWT (Authorization: Bearer <токен>
+// из ответа /api/login). Верификация локальная, без roundtrip в LiveKit:
+// сигнатура — нашим секретом, issuer токена — наш api_key (чужой ключ — 401).
+// Публичными остаются /api/login, /api/healthz и /api/avatar/{login}:
+// картинки <img> не умеют заголовки, секретов в аватаре нет.
+func (a *App) requireToken(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		reject := func() {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "требуется авторизация"})
+		}
+		raw := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		t, err := auth.ParseAPIToken(raw)
+		if err != nil || t.APIKey() != a.cfg.Server.LiveKit.APIKey {
+			reject()
+			return
+		}
+		if _, _, err := t.Verify(a.cfg.Server.LiveKit.APISecret); err != nil {
+			reject()
+			return
+		}
+		next(w, r)
+	}
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

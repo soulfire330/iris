@@ -8,12 +8,24 @@ export interface Session {
   token_ttl_sec: number
 }
 
+// authToken — LiveKit JWT сессии: им авторизуется внутренний API (Bearer).
+// Ставится при логине (App.tsx), сбрасывается при выходе; /api/login и
+// /api/healthz его не требуют.
+let authToken = ''
+
+export function setAuthToken(token: string) {
+  authToken = token
+}
+
 // req — fetch с понятной ошибкой сети: бэкенд упал/недоступен → «Нет связи с
 // сервером» вместо английского «Failed to fetch». Ошибки HTTP (4xx/5xx) —
 // как раньше, текст от сервера.
 async function req(input: string, init?: RequestInit): Promise<Response> {
   try {
-    return await fetch(input, init)
+    return await fetch(input, {
+      ...init,
+      headers: { ...init?.headers, ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
+    })
   } catch {
     throw new Error('Нет связи с сервером')
   }

@@ -26,6 +26,23 @@ func TestRecordingName(t *testing.T) {
 	}
 }
 
+// TestLoginRe — логин из тела запроса попадает в имя файла записи и sidecar:
+// «..» и разделители путей запрещены, иначе запись уходит за пределы каталога.
+func TestLoginRe(t *testing.T) {
+	ok := []string{"ivanov", "i.vanov", "ivan-2", "_dev", "petrov1"}
+	bad := []string{"../x", "../../avatars", "a/b", `a\\b`, "a b", ""}
+	for _, l := range ok {
+		if !loginRe.MatchString(l) {
+			t.Errorf("должен проходить: %q", l)
+		}
+	}
+	for _, l := range bad {
+		if loginRe.MatchString(l) {
+			t.Errorf("не должен проходить: %q", l)
+		}
+	}
+}
+
 func TestParseRecName(t *testing.T) {
 	login, startedAt := parseRecName("2025-06-11_14-30_ivanov-2.mp4")
 	if login != "ivanov" {
