@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"log/slog"
 	"maps"
 	"net/http"
 
@@ -27,7 +27,8 @@ var critterOptions = map[string]any{
 func mustStyle() *dicebear.Style {
 	style, err := dicebear.NewStyle([]byte(styles.Critters))
 	if err != nil {
-		log.Fatalf("dicebear: %v", err)
+		slog.Error("dicebear: style failed to load", "err", err)
+		panic(err)
 	}
 	return style
 }
@@ -43,7 +44,7 @@ func (a *App) handleAvatar(w http.ResponseWriter, r *http.Request) {
 
 	avatar, err := dicebear.NewAvatar(crittersStyle, opts)
 	if err != nil {
-		log.Printf("avatar: %v", err)
+		slog.Error("avatar: failed to render", "seed", opts["seed"], "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "не удалось нарисовать аватар"})
 		return
 	}

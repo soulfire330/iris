@@ -15,13 +15,15 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"office/internal/logging"
 )
 
 const (
@@ -48,6 +50,8 @@ type summary struct {
 }
 
 func main() {
+	logging.Setup()
+
 	dir := flag.String("dir", "", "каталог записей (по умолчанию $RECORDINGS_DIR или /data/recordings)")
 	flag.Parse()
 	if *dir == "" {
@@ -62,15 +66,15 @@ func main() {
 	if stt.base == "" || llm.base == "" || llm.model == "" {
 		// Не падаем в crash-loop: стек без AI должен подниматься. Настроил .env —
 		// перезапусти сервис secretary.
-		log.Printf("секретарь не настроен: задайте STT_BASE_URL, LLM_BASE_URL, LLM_MODEL (см. .env.example) — жду")
+		slog.Warn("secretary not configured: set STT_BASE_URL, LLM_BASE_URL, LLM_MODEL (see .env.example) — waiting")
 		select {}
 	}
 
-	log.Printf("секретарь: слушаю %s (STT %s, LLM %s)", *dir, stt.base, llm.base)
+	slog.Info("secretary: watching", "dir", *dir, "stt", stt.base, "llm", llm.base)
 	client := &http.Client{Timeout: 30 * time.Minute} // STT длинной встречи — минуты
 	for {
 		if err := sweep(*dir, stt, llm, client); err != nil {
-			log.Printf("секретарь: %v", err)
+			slog.Error("secretary: sweep failed", "err", err)
 		}
 		time.Sleep(pollInterval)
 	}
@@ -82,11 +86,13 @@ func sweep(dir string, stt, llm cfg, client *http.Client) error {
 	if err != nil {
 		return fmt.Errorf("каталог записей: %w", err)
 	}
+	mp4s := 0
 	for _, e := range entries {
 		name := e.Name()
 		if !strings.HasSuffix(name, ".mp4") {
 			continue
 		}
+		mp4s++
 		info, err := e.Info()
 		if err != nil {
 			continue
@@ -107,9 +113,10 @@ func sweep(dir string, stt, llm cfg, client *http.Client) error {
 			continue // egress ещё дописывает файл
 		}
 		if err := process(filepath.Join(dir, name), sumPath, sc, stt, llm, client); err != nil {
-			log.Printf("секретарь: %s: %v", name, err)
+			slog.Error("secretary: failed to process", "file", name, "err", err)
 		}
 	}
+	slog.Debug("secretary: sweep", "mp4", mp4s)
 	return nil
 }
 
@@ -136,9 +143,16 @@ func summaryState(sumPath string) (done, retry bool) {
 }
 
 // process — цепочка STT → LLM → запись результата. Статусы пишутся в файл на
-// каждом шаге, рестарт воркера не теряет прогресс.
+// каждом шаге, рестарт воркера не теряет прогресс. В логи — только метрики
+// (длительности, размеры, символы), не содержимое встречи.
 func process(mp4, sumPath string, sc sidecar, stt, llm cfg, client *http.Client) error {
-	log.Printf("секретарь: разбираю %s", filepath.Base(mp4))
+	base := filepath.Base(mp4)
+	mb := int64(0)
+	if fi, err := os.Stat(mp4); err == nil {
+		mb = fi.Size() >> 20
+	}
+	start := time.Now()
+	slog.Info("secretary: processing", "file", base, "mb", mb)
 	sum := summary{Status: "transcribing", Attempts: 1}
 	if cur, err := readJSON[summary](sumPath); err == nil {
 		sum.Attempts = cur.Attempts + 1
@@ -151,6 +165,7 @@ func process(mp4, sumPath string, sc sidecar, stt, llm cfg, client *http.Client)
 	if err != nil {
 		return fail(sumPath, sum, err)
 	}
+	slog.Info("secretary: STT done", "file", base, "ms", time.Since(start).Milliseconds(), "chars", len(text))
 	sum.Status, sum.Transcript = "summarizing", text
 	if err := writeSummary(sumPath, sum); err != nil {
 		return err
@@ -160,11 +175,12 @@ func process(mp4, sumPath string, sc sidecar, stt, llm cfg, client *http.Client)
 	if err != nil {
 		return fail(sumPath, sum, err)
 	}
+	slog.Info("secretary: LLM done", "file", base, "ms", time.Since(start).Milliseconds(), "chars", len(result))
 	sum.Status, sum.Summary = "done", result
 	if err := writeSummary(sumPath, sum); err != nil {
 		return err
 	}
-	log.Printf("секретарь: %s — сводка готова", filepath.Base(mp4))
+	slog.Info("secretary: summary ready", "file", base, "total_ms", time.Since(start).Milliseconds())
 	return nil
 }
 
@@ -172,7 +188,7 @@ func fail(sumPath string, sum summary, err error) error {
 	sum.Error = err.Error()
 	sum.Status = "error" // Attempts < maxAttempts — вернёмся к файлу после retryAfter
 	werr := writeSummary(sumPath, sum)
-	log.Printf("секретарь: %s — попытка %d/%d не удалась: %v", sumPath, sum.Attempts, maxAttempts, err)
+	slog.Warn("secretary: attempt failed", "file", filepath.Base(sumPath), "attempt", sum.Attempts, "max", maxAttempts, "err", err)
 	return werr
 }
 
@@ -198,7 +214,7 @@ func systemPrompt() string {
 	}
 	b, err := os.ReadFile(path)
 	if err != nil || len(bytes.TrimSpace(b)) == 0 {
-		log.Printf("секретарь: промпт %s не прочитан (%v) — встроенный дефолт", path, err)
+		slog.Warn("secretary: prompt not read — using built-in default", "path", path, "err", err)
 		return defaultPrompt
 	}
 	return string(b)

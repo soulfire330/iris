@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -31,7 +31,7 @@ func (a *App) handleRoom(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	resp, err := a.livekit.ListRooms(ctx, &livekit.ListRoomsRequest{Names: []string{a.cfg.Server.Room}})
 	if err != nil {
-		log.Printf("room: %v", err)
+		slog.Error("room: livekit unavailable", "err", err)
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "livekit недоступен"})
 		return
 	}
@@ -53,7 +53,7 @@ func (a *App) handleRoom(w http.ResponseWriter, r *http.Request) {
 
 	plist, err := a.livekit.ListParticipants(ctx, &livekit.ListParticipantsRequest{Room: a.cfg.Server.Room})
 	if err != nil {
-		log.Printf("room participants: %v", err)
+		slog.Error("room: participants unavailable", "err", err)
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "livekit недоступен"})
 		return
 	}

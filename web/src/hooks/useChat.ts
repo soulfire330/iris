@@ -65,7 +65,7 @@ export function useChat(
       )
       room.localParticipant
         .publishData(encodePayload(text, ts), { reliable: true, topic: CHAT_TOPIC })
-        .catch((e) => console.warn('chat: не удалось отправить', e))
+        .catch((e) => console.warn('chat: send failed', e))
     },
     [room, me.identity, me.name, me.seed],
   )

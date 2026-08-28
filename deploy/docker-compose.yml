@@ -21,6 +21,11 @@ services:
       # серт TURN читаем из хранилища сертификатов Caddy (Фаза 4)
       - caddy_data:/caddy-data:ro
     command: ["--config", "/etc/livekit.yaml"]
+    logging: &log-rotate
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     depends_on:
       - redis
 
@@ -53,6 +58,7 @@ services:
     volumes:
       - ./egress.yaml:/etc/egress.yaml:ro
       - ../data/recordings:/out/recordings
+    logging: *log-rotate
     depends_on:
       redis:
         condition: service_started
@@ -75,6 +81,7 @@ services:
       - ../data:/etc/office/data
       - ../web/dist:/etc/office/web-dist:ro
     command: ["-config", "/etc/office/config.yaml"]
+    logging: *log-rotate
 
   # Секретарь: воркер AI-сводок (server/cmd/secretary). Тот же образ, другой
   # entrypoint; смотрит записи с флагом summary и разбирает их STT → LLM.
@@ -92,6 +99,7 @@ services:
       - ../data/recordings:/data/recordings
       # системный промпт — редактируется на хосте, подхватывается без перезапуска
       - ../deploy/secretary-prompt.md:/etc/office/secretary-prompt.md:ro
+    logging: *log-rotate
     depends_on:
       recordings-init:
         condition: service_completed_successfully

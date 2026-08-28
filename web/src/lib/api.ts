@@ -80,8 +80,12 @@ export async function enableRecordingSummary(): Promise<void> {
   if (!res.ok) throw new Error(data.error ?? `Ошибка ${res.status}`)
 }
 
-export async function stopRecording(): Promise<{ stopped: boolean }> {
-  const res = await fetch('/api/recording/stop', { method: 'POST' })
+export async function stopRecording(login: string): Promise<{ stopped: boolean }> {
+  const res = await fetch('/api/recording/stop', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ login }),
+  })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error ?? `Ошибка ${res.status}`)
   return data as { stopped: boolean }

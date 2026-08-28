@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -32,13 +32,13 @@ type loginReq struct {
 }
 
 type loginResp struct {
-	Token     string `json:"token"`
-	Room      string `json:"room"`
-	Name      string `json:"name"`
-	Role      string `json:"role"`
-	Login     string `json:"login"`
-	Avatar    string `json:"avatar_seed"`
-	TokenTTL  int    `json:"token_ttl_sec"`
+	Token    string `json:"token"`
+	Room     string `json:"room"`
+	Name     string `json:"name"`
+	Role     string `json:"role"`
+	Login    string `json:"login"`
+	Avatar   string `json:"avatar_seed"`
+	TokenTTL int    `json:"token_ttl_sec"`
 }
 
 func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +49,9 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	key := req.Login
+	ip := clientIP(r)
 	if a.limits.Blocked(key) {
+		slog.Warn("login rejected: blocked", "login", key, "ip", ip)
 		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "слишком много попыток, подождите 5 минут"})
 		return
 	}
@@ -57,11 +59,13 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 	emp := a.cfg.Employee(req.Login)
 	if emp == nil {
 		a.limits.Failure(key)
+		slog.Warn("login rejected: unknown employee", "login", key, "ip", ip)
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "неверный логин или пароль"})
 		return
 	}
 	if bcrypt.CompareHashAndPassword([]byte(emp.PasswordHash), []byte(req.Password)) != nil {
 		a.limits.Failure(key)
+		slog.Warn("login rejected: wrong password", "login", key, "ip", ip)
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "неверный логин или пароль"})
 		return
 	}
@@ -73,10 +77,11 @@ func (a *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	token, err := a.LiveKitToken(emp.Login, emp.Name, seed, emp.Role)
 	if err != nil {
-		log.Printf("token: %v", err)
+		slog.Error("login: failed to issue token", "login", key, "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "не удалось выдать токен"})
 		return
 	}
+	slog.Info("login", "login", key, "name", emp.Name, "ip", ip)
 
 	writeJSON(w, http.StatusOK, loginResp{
 		Token:    token,

@@ -136,7 +136,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
     setActionError('')
     try {
       if (recording) {
-        await stopRecording()
+        await stopRecording(session.login)
         setTimeout(() => setRecTick((t) => t + 1), 2000)
       } else {
         await startRecording(session.login)
