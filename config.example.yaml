@@ -16,5 +16,5 @@ server:
 employees:
   - login: admin
     name: Админ
-    # пароль сгенерируй: scripts/hashpass.sh 'пароль' (или go run ./server/cmd/hashpass 'пароль')
+    # пароль сгенерируй: scripts/hashpass.sh 'пароль'
     password_hash: $2a$10$...
