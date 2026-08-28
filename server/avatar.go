@@ -33,9 +33,9 @@ func mustStyle() *dicebear.Style {
 	return style
 }
 
-// handleAvatar — SVG-аватар сотрудника. Seed = логин: у сотрудника всегда
-// один и тот же зверь, без хранилища. Эндпоинт без авторизации: любой seed —
-// валидный ввод, секретов в ответе нет.
+// handleAvatar — SVG-аватар сотрудника. Seed = логин + случайный v из URL
+// (клиент добавляет при входе): зверь един в рамках сессии, без хранилища.
+// Эндпоинт без авторизации: любой seed — валидный ввод, секретов в ответе нет.
 func (a *App) handleAvatar(w http.ResponseWriter, r *http.Request) {
 	opts := maps.Clone(critterOptions)
 	// Seed = логин + случайный v из URL (клиент добавляет при входе) —

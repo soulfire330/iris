@@ -1,10 +1,11 @@
 services:
+  # host network: Caddy должен достать livekit (тоже host network — UDP-медиа
+  # без docker-proxy) и backend. В host-неймспейсе нет DNS compose-сети,
+  # поэтому оба апстрима — loopback (127.0.0.1, см. Caddyfile).
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
+    network_mode: host
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -36,16 +37,18 @@ services:
     ports:
       - "127.0.0.1:6379:6379"
 
-  # Права на общий каталог записей: docker создаёт bind-mount root:root 755,
-  # а egress работает под uid 1001 и не может писать. Разовый контейнер
-  # делает каталог группово-писаемым (группа root = gid 0 у egress).
+  # Права на записи: named volume создаётся docker'ом root:root 755, а egress
+  # в образе — uid 1001. Запускать egress root'ом нельзя (entrypoint поднимает
+  # pulseaudio, тот под root падает) — поэтому разовый init из образа самого
+  # egress (не busybox) отдаёт каталог пользователю egress (gid 0 у него уже
+  # root-группа).
   recordings-init:
-    image: busybox:1.36
+    image: livekit/egress:latest
     restart: "no"
     user: "0:0"
+    entrypoint: ["sh", "-c", "chown -R 1001:0 /out/recordings && chmod 775 /out/recordings"]
     volumes:
-      - ../data/recordings:/out/recordings
-    entrypoint: ["sh", "-c", "chgrp 0 /out/recordings && chmod 775 /out/recordings"]
+      - recordings:/out/recordings
 
   livekit-egress:
     image: livekit/egress:latest
@@ -57,7 +60,7 @@ services:
       EGRESS_CONFIG_FILE: /etc/egress.yaml
     volumes:
       - ./egress.yaml:/etc/egress.yaml:ro
-      - ../data/recordings:/out/recordings
+      - recordings:/out/recordings
     logging: *log-rotate
     depends_on:
       redis:
@@ -77,8 +80,9 @@ services:
     volumes:
       # Пути в config.yaml относительные (./data, ./web-dist) — монтируем всё
       # под /etc/office, чтобы они резолвились в смонтированные каталоги.
+      # Записи — named volume recordings (общий с egress и secretary).
       - ../config.yaml:/etc/office/config.yaml:ro
-      - ../data:/etc/office/data
+      - recordings:/etc/office/data/recordings
       - ../web/dist:/etc/office/web-dist:ro
     command: ["-config", "/etc/office/config.yaml"]
     env_file:
@@ -99,7 +103,7 @@ services:
       - path: ../.env
         required: false
     volumes:
-      - ../data/recordings:/data/recordings
+      - recordings:/data/recordings
       # системный промпт — редактируется на хосте, подхватывается без перезапуска
       - ../deploy/secretary-prompt.md:/etc/office/secretary-prompt.md:ro
     logging: *log-rotate
@@ -109,3 +113,8 @@ services:
 
 volumes:
   caddy_data:
+  # Записи: named volume, а не bind-mount — не зависит от прав хостового
+  # каталога. Права внутри чинит одноразовый recordings-init (образ egress).
+  # В dev — bind в data/recordings через docker-compose.dev.yml.
+  recordings:
+    name: office-recordings

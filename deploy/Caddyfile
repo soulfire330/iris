@@ -5,7 +5,8 @@ hub.example.com {
 	handle /rtc* {
 		reverse_proxy 127.0.0.1:7880
 	}
-	reverse_proxy backend:8090
+	# Caddy на host network (см. docker-compose.yml): до backend — по loopback.
+	reverse_proxy 127.0.0.1:8090
 }
 
 # Сайт-заглушка только для выпуска сертификата TURN по HTTP-01.

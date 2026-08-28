@@ -10,17 +10,17 @@
 
 | Область | Решение |
 |---|---|
-| Хранилище | Без СУБД: сотрудники в `config.yaml`, seed-аватары в `data/avatars.json`, записи — файлы в volume. Redis — только очередь Egress. (ADR-0001) |
+| Хранилище | Без СУБД: сотрудники в `config.yaml`, записи — файлы в volume. Redis — только очередь Egress. (ADR-0001) |
 | Авторизация | Свободный ввод login + password. bcrypt-хэш в конфиге. Лимит попыток: 5 за 5 минут на логин, в памяти бэкенда. |
-| Токены | Единственный токен — LiveKit JWT (6 ч), выдаётся эндпоинтом `/api/login`. Отдельного app-JWT нет; фронт при 401 молча перелогинивается. |
+| Токены | Единственный токен — LiveKit JWT (6 ч), выдаётся эндпоинтом `/api/login`. Отдельного app-JWT нет; он же авторизует внутренний API (заголовок `Authorization: Bearer`). При истечении (6 ч) — перезагрузка страницы и повторный вход. |
 | Роли | Нет. Все равны: любой запускает/останавливает запись. |
-| Аватар | boringavatars, вариант Beam, палитра duotone. Случайный seed генерируется при первом входе, хранится в `data/avatars.json`. |
+| Аватар | boringavatars, вариант Beam, палитра duotone. Случайный seed на каждый вход (без хранилища), уходит в metadata токена — все клиенты видят одного зверя, при новом входе — нового. |
 | Комната | Одна постоянная (`office`), закрывается при опустении (auto-dispose). Вход = авто-подключение. |
 | Запись | Серверная, LiveKit Egress, audio-only RoomComposite → MP4 в volume (ADR-0002). Одна запись одновременно, кнопка глобальная. Статус клиентам — метаданные комнаты LiveKit (`roomMetadataChanged`); участники на стопе — sidecar-json у файла; источник правды — активные egress в LiveKit. Бип на старт/стоп. |
 | AI-сводки | Кнопка AI видна при идущей записи и заказывает сводку: флаг `summary` в sidecar записи (ADR-0004). Отдельный воркер-секретарь (`server/cmd/secretary`) разбирает такие записи STT → LLM и кладёт `{имя}.summary.json`; секреты — `.env`, не config.yaml. Сводка — в табе «Сводки». |
 | TLS | Публичный домен, Let's Encrypt; Caddy терминирует HTTPS для веба и wss LiveKit (ADR-0003). |
 | TURN | Встроенный в LiveKit, обязателен (есть удалённые участники). TURN/TLS на поддомене `turn.<домен>`, порты 3478/UDP + 5349/TCP. |
-| Деплой | Docker compose на одном корпсервере. `livekit-server` — host network. |
+| Деплой | Docker compose на одном корпсервере. `livekit-server` и `caddy` — host network. |
 | UI | Русский. React + Vite + TS + shadcn/ui + livekit-client + boringavatars. |
 
 ## 2. Архитектура
@@ -39,7 +39,7 @@ secretary ──► data/recordings/ (mp4 + sidecar с флагом summary) ─
 - `backend` раздаёт статику фронтенда (одна точка входа для Caddy).
 - `secretary` (воркер AI-сводок, `server/cmd/secretary`): сканирует записи с флагом `summary`, STT → LLM, результат в `{имя}.summary.json` рядом с mp4. Секреты — `.env` (env_file), config.yaml не читает.
 - `livekit-server` на host network (доки LiveKit рекомендуют для производительности UDP).
-- Volume `data/`: `avatars.json`, `recordings/` (общий для egress и backend).
+- Volume `recordings` (named docker volume, `office-recordings`): общий для egress, backend и secretary. Права чинит одноразовый init из образа самого egress (root'ом egress запускать нельзя — entrypoint поднимает pulseaudio, тот под root падает). В dev записи — `data/recordings/` на хосте (`deploy/docker-compose.dev.yml`, init делает каталог 777: туда пишут и egress, и хост-бэкенд).
 - Конфиг читается при старте; изменение → `docker compose restart backend`.
 
 ### Сервисы compose
@@ -74,7 +74,8 @@ server:
     api_key: <key>
     api_secret: <secret>
   room: office
-  data_dir: /data
+  data_dir: ./data
+  web_dir: ./web-dist
 
 employees:
   - login: ivanov
@@ -96,6 +97,8 @@ LLM_MODEL=…
 ```
 
 ## 5. API бэкенда
+
+Авторизация: все эндпоинты, кроме `/api/login`, `/api/healthz` и `/api/avatar/{login}`, требуют заголовок `Authorization: Bearer <LiveKit JWT>` (токен из ответа логина). Публичный API (`/api/public/*`) — отдельно, под ключом `X-API-Key`.
 
 | Метод | Путь | Описание |
 |---|---|---|
@@ -151,7 +154,6 @@ LLM_MODEL=…
 ## 8. Открытые детали реализации (не решения)
 
 - Выдача TURN-серта: два hostname по HTTP-01 (серты из certmagic-хранилища Caddy в файл для LiveKit) либо wildcard DNS-01 — выбрать на Фазе 4.
-- Права на volume для egress (контейнер не root) — настроить в compose.
 - `empty_timeout` комнаты — подобрать дефолт LiveKit.
 - Удаление/ротация записей — не делаем, пока не попросят.
 

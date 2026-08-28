@@ -35,7 +35,7 @@ https://$IP {
 	handle /rtc* {
 		reverse_proxy 127.0.0.1:7880
 	}
-	reverse_proxy backend:8090
+	reverse_proxy 127.0.0.1:8090
 }
 EOF
 

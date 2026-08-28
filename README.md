@@ -12,7 +12,7 @@ server/            Go-бэкенд (+ cmd/hashpass, cmd/secretary — ворке
 web/               React-фронт (Vite)
 config.example.yaml шаблон конфига → скопируй в config.yaml (в .gitignore)
 .env.example       шаблон секретов AI-сводок → скопируй в .env (в .gitignore)
-data/              данные: avatars.json, recordings/ (в .gitignore)
+data/              записи в dev (в проде — named volume recordings)
 ```
 
 ## Быстрый старт (dev)

@@ -29,13 +29,20 @@ case "$DOMAIN" in
     ;;
 esac
 
-# Секреты livekit: dev-ключи меняем при первом деплое (оба файла синхронно).
+# Секреты livekit: dev-ключи меняем при первом деплое (все три файла синхронно).
 if grep -q '^  devkey:' deploy/livekit.yaml; then
   KEY=$(openssl rand -hex 8)
   SECRET=$(openssl rand -hex 32)
   sed -i "s/^  devkey:.*/  $KEY: $SECRET/" deploy/livekit.yaml
   sed -i "s/api_key: .*/api_key: $KEY/; s/api_secret: .*/api_secret: $SECRET/" config.yaml
+  sed -i "s/api_key: .*/api_key: $KEY/; s/api_secret: .*/api_secret: $SECRET/" deploy/egress.yaml
   echo "Сгенерированы новые ключи livekit (dev-ключи заменены)."
+fi
+
+# Dev-ключи не должны остаться ни в одном файле конфигурации livekit/egress.
+if grep -q devkey deploy/livekit.yaml deploy/egress.yaml config.yaml; then
+  echo "Ошибка: dev-ключ livekit остался в конфигурации (livekit.yaml/egress.yaml/config.yaml)" >&2
+  exit 1
 fi
 
 # PUBLIC_API_KEY для публичного API.

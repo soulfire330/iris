@@ -1,0 +1,52 @@
+# Dev-инфраструктура (bun infra:up): redis + livekit + egress для локальной
+# разработки. Отдельный файл, а не override prod-стека: в dev egress пишет
+# в репозиторный data/recordings (бэкенд и секретарь запускаются на хосте),
+# в проде — в named volume recordings (docker-compose.yml).
+#
+# Egress — штатный пользователь образа uid 1001 (root'ом его нельзя:
+# entrypoint поднимает pulseaudio, а тот под root падает). Права на каталог
+# чинит разовый init из того же образа: 777, потому что в dev в этот каталог
+# пишут и egress (uid 1001), и хост-процессы бэкенда (владелец-человек).
+
+services:
+  livekit-server:
+    image: livekit/livekit-server:latest
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    command: ["--config", "/etc/livekit.yaml"]
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  recordings-init:
+    image: livekit/egress:latest
+    restart: "no"
+    user: "0:0"
+    entrypoint: ["sh", "-c", "mkdir -p /out/recordings && chmod 777 /out/recordings"]
+    volumes:
+      - ../data/recordings:/out/recordings
+
+  livekit-egress:
+    image: livekit/egress:latest
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - SYS_ADMIN
+    environment:
+      EGRESS_CONFIG_FILE: /etc/egress.yaml
+    volumes:
+      - ./egress.yaml:/etc/egress.yaml:ro
+      - ../data/recordings:/out/recordings
+    depends_on:
+      livekit-server:
+        condition: service_started
+      recordings-init:
+        condition: service_completed_successfully
