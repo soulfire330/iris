@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"log/slog"
 	"maps"
 	"net/http"
@@ -74,9 +73,10 @@ func avatarSVG(key, seed string) (string, error) {
 	return svg, nil
 }
 
-// participantAvatar — data URI аватара участника (identity+seed) или пустая
+// participantAvatar — raw SVG аватара участника (identity+seed) или пустая
 // строка (нет seed/ошибка рендера). Кэш общий с /api/avatar: поллинг комнат
-// зверей не перегенерирует.
+// зверей не перегенерирует. Сжатие — на HTTP-уровне (gzip): ответы API
+// сжимаются middleware'ом, SVG-текст ужимается в ~3 раза.
 func participantAvatar(identity, seed string) string {
 	if seed == "" {
 		return ""
@@ -85,7 +85,7 @@ func participantAvatar(identity, seed string) string {
 	if err != nil {
 		return ""
 	}
-	return "data:image/svg+xml;base64," + base64.StdEncoding.EncodeToString([]byte(svg))
+	return svg
 }
 
 // handleAvatar — SVG-аватар сотрудника. Остался для плиток комнаты (главный

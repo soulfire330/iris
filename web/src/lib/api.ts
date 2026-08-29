@@ -13,8 +13,8 @@ export interface Session {
 // все API-вызовы), display — подпись; остальное — живое состояние с сервера:
 // participants полный (identity — логин, name — имя; счётчик людей и первые
 // три аватара считаются из него), recording — запись. Аватар первых трёх
-// участников приходит сразу data-URI (avatar) — /api/avatar экрану входа
-// не нужен.
+// участников приходит raw SVG-строкой (avatar) — /api/avatar экрану входа
+// не нужен, сжатие — gzip на уровне HTTP.
 export interface RoomOption {
   name: string
   display: string
@@ -69,8 +69,8 @@ export async function login(login: string, password: string, room: string): Prom
 // (сервер берёт его из LiveKit), server_now_ms — часы сервера для
 // выравнивания тика. 0 в started_at_ms — комната ещё пуста.
 // participants — люди в комнате сейчас (для плиток-заглушек до коннекта).
-// avatar — data URI из /api/room (снимок); после коннекта новые участники
-// идут через LiveKit, их аватар — /api/avatar.
+// avatar — raw SVG из /api/room (снимок, ответ gzip'ится); после коннекта
+// новые участники идут через LiveKit, их аватар — /api/avatar.
 export interface RoomParticipant {
   identity: string
   name: string

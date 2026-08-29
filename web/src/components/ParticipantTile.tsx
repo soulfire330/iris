@@ -9,7 +9,7 @@ import {
 import { Participant, Track } from 'livekit-client'
 import { cn } from '@/lib/utils'
 import { initials } from '@/lib/names'
-import { avatarUrl } from '@/lib/avatars'
+import { avatarSvgUrl, avatarUrl } from '@/lib/avatars'
 import { Video } from '@/components/Video'
 
 export interface TileState {
@@ -89,13 +89,13 @@ export function ParticipantTile({
         <>
           {connecting ? (
             <img
-              src={state.avatar ?? avatarUrl(state.id ?? '', state.seed)}
+              src={state.avatar ? avatarSvgUrl(state.avatar) : avatarUrl(state.id ?? '', state.seed)}
               alt=""
               className="h-[max(40px,20cqw)] w-[max(40px,20cqw)] min-2xl:h-[max(40px,32cqw)] min-2xl:w-[max(40px,32cqw)] max-lg:h-[max(40px,14cqw)] max-lg:w-[max(40px,14cqw)] max-sm:h-[max(40px,10cqw)] max-sm:w-[max(40px,10cqw)] flex-none rounded-full bg-secondary object-cover grayscale animate-breathe"
             />
           ) : participant ? (
             <img
-              src={state.avatar ?? avatarUrl(participant.identity, state.seed)}
+              src={state.avatar ? avatarSvgUrl(state.avatar) : avatarUrl(participant.identity, state.seed)}
               alt=""
               className="h-[max(40px,20cqw)] w-[max(40px,20cqw)] min-2xl:h-[max(40px,32cqw)] min-2xl:w-[max(40px,32cqw)] max-lg:h-[max(40px,14cqw)] max-lg:w-[max(40px,14cqw)] max-sm:h-[max(40px,10cqw)] max-sm:w-[max(40px,10cqw)] flex-none rounded-full bg-secondary object-cover"
             />

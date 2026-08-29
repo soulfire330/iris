@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { fetchRooms, login, type RoomOption, type Session } from '@/lib/api'
+import { avatarSvgUrl } from '@/lib/avatars'
 import { cn } from '@/lib/utils'
 
 // Намерение «с чем войти»: микрофон/камера включаются в комнате после
@@ -218,12 +219,12 @@ export function LoginPage({ onLogin }: { onLogin: (s: Session) => void }) {
                     {r.participants.length > 0 && (
                       <span className="flex flex-none items-center">
                         {r.participants.slice(0, 3).map((p, i) =>
-                          // Аватар приходит с сервера (data URI) — экран входа
-                          // не ходит в /api/avatar.
+                          // Аватар приходит с сервера raw SVG (ответ gzip'ится)
+                          // — экран входа не ходит в /api/avatar.
                           p.avatar ? (
                             <img
                               key={p.identity}
-                              src={p.avatar}
+                              src={avatarSvgUrl(p.avatar)}
                               alt={p.name}
                               className={cn(
                                 'size-5.5 rounded-full border object-cover',
