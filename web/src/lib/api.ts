@@ -11,14 +11,15 @@ export interface Session {
 
 // Комната для экрана входа: name — ID (имя комнаты LiveKit, им параметризуются
 // все API-вызовы), display — подпись; остальное — живое состояние с сервера:
-// participants (identity — логин, seed — аватар, первые три — аватары),
-// счётчик, запись.
+// participants полный (identity — логин, name — имя; счётчик людей и первые
+// три аватара считаются из него), recording — запись. Аватар первых трёх
+// участников приходит сразу data-URI (avatar) — /api/avatar экрану входа
+// не нужен.
 export interface RoomOption {
   name: string
   display: string
   recording: boolean
-  num_participants: number
-  participants: { identity: string; name: string; seed?: string }[]
+  participants: { identity: string; name: string; avatar?: string }[]
 }
 
 // authToken — LiveKit JWT сессии: им авторизуется внутренний API (Bearer).

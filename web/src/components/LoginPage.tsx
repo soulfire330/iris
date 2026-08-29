@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { fetchRooms, login, type RoomOption, type Session } from '@/lib/api'
-import { avatarUrl } from '@/lib/avatars'
 import { cn } from '@/lib/utils'
 
 // Намерение «с чем войти»: микрофон/камера включаются в комнате после
@@ -201,13 +200,13 @@ export function LoginPage({ onLogin }: { onLogin: (s: Session) => void }) {
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-13">{r.display}</span>
                       <span className="flex items-center gap-3 font-mono text-10 uppercase tracking-mono text-neutral-500">
-                        {r.num_participants > 0 ? (
-                          <span>
-                            {r.num_participants} в комнате
-                          </span>
-                        ) : (
-                          <span className="text-neutral-600">пусто</span>
-                        )}
+                        {r.participants.length > 0 ? (
+                        <span>
+                          {r.participants.length} в комнате
+                        </span>
+                      ) : (
+                        <span className="text-neutral-600">пусто</span>
+                      )}
                         {r.recording && (
                           <span className="flex items-center gap-1">
                             <span className="size-1.25 animate-rec rounded-full bg-recording" />
@@ -216,24 +215,26 @@ export function LoginPage({ onLogin }: { onLogin: (s: Session) => void }) {
                         )}
                       </span>
                     </span>
-                    {r.num_participants > 0 && (
+                    {r.participants.length > 0 && (
                       <span className="flex flex-none items-center">
-                        {r.participants.slice(0, 3).map((p, i) => (
-                          // Сгенерированный аватар (DiceBear): тот же зверь,
-                          // что в комнате, — seed из metadata токена.
-                          <img
-                            key={p.identity}
-                            src={avatarUrl(p.identity, p.seed)}
-                            alt={p.name}
-                            className={cn(
-                              'size-5.5 rounded-full border object-cover',
-                              // Обводка — цветом фона строки: аватары «врезаны» в строку.
-                              active ? 'border-card' : 'border-background',
-                              i > 0 && '-ml-0.5',
-                            )}
-                          />
-                        ))}
-                        {r.num_participants > 3 && (
+                        {r.participants.slice(0, 3).map((p, i) =>
+                          // Аватар приходит с сервера (data URI) — экран входа
+                          // не ходит в /api/avatar.
+                          p.avatar ? (
+                            <img
+                              key={p.identity}
+                              src={p.avatar}
+                              alt={p.name}
+                              className={cn(
+                                'size-5.5 rounded-full border object-cover',
+                                // Обводка — цветом фона строки: аватары «врезаны» в строку.
+                                active ? 'border-card' : 'border-background',
+                                i > 0 && '-ml-0.5',
+                              )}
+                            />
+                          ) : null,
+                        )}
+                        {r.participants.length > 3 && (
                           <span
                             className={cn(
                               'flex size-5.5 items-center justify-center rounded-full border bg-neutral-800 text-9 text-neutral-300',
@@ -241,7 +242,7 @@ export function LoginPage({ onLogin }: { onLogin: (s: Session) => void }) {
                               '-ml-0.5',
                             )}
                           >
-                            +{r.num_participants - 3}
+                            +{r.participants.length - 3}
                           </span>
                         )}
                       </span>

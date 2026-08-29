@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -113,13 +114,16 @@ func (a *App) handleRooms(w http.ResponseWriter, r *http.Request) {
 				Seed string `json:"seed"`
 			}
 			_ = json.Unmarshal([]byte(p.Metadata), &meta)
-			st.Participants = append(st.Participants, roomStateParticipant{
-				Identity: p.Identity,
-				Name:     p.Name,
-				Seed:     meta.Seed,
-			})
+			pp := roomStateParticipant{Identity: p.Identity, Name: p.Name, Seed: meta.Seed}
+			// Аватары первым трём участникам — столько их видно на экране входа;
+			// остальным не отдаём (payload и генерация по минимуму).
+			if len(st.Participants) < 3 && meta.Seed != "" {
+				if svg, err := avatarSVG(p.Identity+meta.Seed, p.Identity+meta.Seed); err == nil {
+					pp.Avatar = "data:image/svg+xml;base64," + base64.StdEncoding.EncodeToString([]byte(svg))
+				}
+			}
+			st.Participants = append(st.Participants, pp)
 		}
-		st.NumParticipants = len(st.Participants)
 		a.recMu.Lock()
 		_, st.Recording = a.activeRec[rc.Name]
 		a.recMu.Unlock()
@@ -129,17 +133,19 @@ func (a *App) handleRooms(w http.ResponseWriter, r *http.Request) {
 }
 
 type roomState struct {
-	Name            string                 `json:"name"`
-	Display         string                 `json:"display"`
-	Recording       bool                   `json:"recording"`
-	NumParticipants int                    `json:"num_participants"`
-	Participants    []roomStateParticipant `json:"participants"`
+	Name         string                 `json:"name"`
+	Display      string                 `json:"display"`
+	Recording    bool                   `json:"recording"`
+	Participants []roomStateParticipant `json:"participants"` // полный список: счётчик = len
 }
 
 type roomStateParticipant struct {
 	Identity string `json:"identity"`
 	Name     string `json:"name"`
 	Seed     string `json:"seed,omitempty"`
+	// Avatar — data URI первых трёх участников: экран входа рисует аватар
+	// без обращения к /api/avatar (публичная поверхность меньше).
+	Avatar string `json:"avatar,omitempty"`
 }
 
 type roomParticipant struct {

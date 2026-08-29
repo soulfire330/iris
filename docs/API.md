@@ -16,8 +16,9 @@
     "name": "office",
     "display": "Офис",
     "recording": false,
-    "num_participants": 2,
-    "participants": [{"identity": "ivanov", "name": "Иван"}]
+    "participants": [
+      {"identity": "ivanov", "name": "Иван", "avatar": "data:image/svg+xml;base64,..."}
+    ]
   }
 ]
 ```
@@ -26,8 +27,7 @@
 |---|---|
 | `name` / `display` | имя комнаты и подпись (порядок — как в конфиге) |
 | `recording` | идёт ли запись в комнате |
-| `num_participants` | людей в комнате (без egress-бота записи) |
-| `participants` | все участники: `identity` — логин (для проверки «логин уже в комнате»), `name` — имя, `seed` — аватар (первые три дают аватары) |
+| `participants` | все участники: `identity` — логин (для проверки «логин уже в комнате»), `name` — имя, счётчик людей — `len(participants)`. Первые три участника дополнительно несут `avatar` — data URI (base64): экран входа рисует аватар без обращения к `/api/avatar` |
 
 LiveKit недоступен — `502`: экран входа показывает «сервер не отвечает» и
 продолжает опрашивать.
