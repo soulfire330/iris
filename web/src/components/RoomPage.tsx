@@ -1,5 +1,5 @@
 import { CornersOut } from '@phosphor-icons/react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { RoomEvent, Track, type LocalTrackPublication } from 'livekit-client'
 import { Button } from '@/components/ui/button'
 import { CallBar } from '@/components/CallBar'
@@ -330,23 +330,32 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
   const gridRef = useRef<HTMLDivElement>(null)
   // Ширина плитки, посчитанная подбором; передаётся каждой плитке напрямую.
   const [fitTileW, setFitTileW] = useState(0)
-  useEffect(() => {
+  // Считаем в layout-эффекте синхронно (до отрисовки), чтобы плитки не
+  // рендерились на миг во всю ширину; RO — на ресайзы поля.
+  useLayoutEffect(() => {
     const el = gridRef.current
     if (!el) return
-    const ro = new ResizeObserver(() => {
+    const compute = () => {
       const n = tileCount
       const gap = 12 // gap-3
       const { width: w, height: h } = el.getBoundingClientRect()
       if (w <= 0 || h <= 0) return
+      // На телефоне ширина — чистый CSS (2 колонки, одному — вся ширина).
+      if (matchMedia('(max-width: 40rem)').matches) {
+        setFitTileW(0)
+        return
+      }
       if (n <= 1) {
         setFitTileW(0) // капы CSS: max-w-[50cqw], на телефоне max-w-full
         return
       }
+      // На телефоне плитки-карточки 4:5, на остальных — 16:9.
+      const ar = matchMedia('(max-width: 40rem)').matches ? 5 / 4 : 9 / 16
       let bestW = 0
       for (let k = 1; k <= n; k++) {
         const rows = Math.ceil(n / k)
         const tileW = (w - (k - 1) * gap) / k
-        const needH = (rows * tileW * 9) / 16 + (rows - 1) * gap
+        const needH = rows * tileW * ar + (rows - 1) * gap
         if (tileW > bestW && needH <= h) bestW = tileW
       }
       // Ни один вариант не влез по высоте — минимальное переполнение.
@@ -355,7 +364,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
         for (let k = 1; k <= n; k++) {
           const rows = Math.ceil(n / k)
           const tileW = (w - (k - 1) * gap) / k
-          const needH = (rows * tileW * 9) / 16 + (rows - 1) * gap
+          const needH = rows * tileW * ar + (rows - 1) * gap
           if (needH < minNeed) {
             minNeed = needH
             bestW = tileW
@@ -363,7 +372,9 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
         }
       }
       setFitTileW(bestW)
-    })
+    }
+    compute()
+    const ro = new ResizeObserver(compute)
     ro.observe(el)
     return () => ro.disconnect()
   }, [tileCount])

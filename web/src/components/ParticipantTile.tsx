@@ -54,7 +54,7 @@ export function ParticipantTile({
     <div
       style={width ? { width: `${width}px` } : undefined}
       className={cn(
-        'group relative aspect-[16/9] w-full max-w-[50cqw] overflow-hidden rounded-md bg-card shadow-sm max-sm:max-w-full',
+        'group relative aspect-[16/9] w-full max-w-[50cqw] overflow-hidden rounded-md bg-card shadow-sm max-sm:aspect-[4/5] max-sm:w-[calc(50%-6px)] max-sm:only:w-full max-sm:max-w-full',
         hasVideo ? 'bg-muted' : 'flex flex-col items-center justify-center gap-2 p-3',
         speaking && 'shadow-[0_0_0_1px_var(--speaking),0_0_0_5px_var(--accent-900)]',
       )}
@@ -131,7 +131,7 @@ export function ParticipantTile({
         <button
           onClick={onExpand}
           title="На крупный план"
-          className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-md text-neutral-100 opacity-0 transition-opacity hover:bg-neutral-900/70 group-hover:opacity-100"
+          className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-md text-neutral-100 opacity-0 transition-opacity hover:bg-neutral-900/70 group-hover:opacity-100 max-md:opacity-100"
         >
           <CornersOut className="h-4 w-4" />
         </button>
