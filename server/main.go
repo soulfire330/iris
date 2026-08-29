@@ -1,13 +1,14 @@
 package main
 
 import (
-	"compress/gzip"
 	"flag"
 	"log/slog"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/CAFxX/httpcompression"
 
 	"office/internal/logging"
 )
@@ -60,37 +61,21 @@ func main() {
 	mux.HandleFunc("GET /api/public/status", app.publicAuth(app.handlePublicStatus))
 	mux.Handle("/", http.FileServer(http.Dir(cfg.Server.WebDir)))
 
+	// Сжатие ответов (gzip/brotli по Accept-Encoding): аватары в /api/rooms
+	// и /api/room — raw SVG, ужимаются в ~3 раза. mp4 не сжимаем (blacklist):
+	// плееру нужны Range-запросы, библиотека их не обрабатывает при сжатии.
+	compressor, err := httpcompression.DefaultAdapter(
+		httpcompression.ContentTypes([]string{"video/mp4"}, true),
+	)
+	if err != nil {
+		slog.Error("httpcompression: adapter failed", "err", err)
+		os.Exit(1)
+	}
+
 	slog.Info("office: listening", "addr", cfg.Server.Listen)
-	slog.Error("http", "err", http.ListenAndServe(cfg.Server.Listen, accessLog(gzipMiddleware(mux))))
+	slog.Error("http", "err", http.ListenAndServe(cfg.Server.Listen, accessLog(compressor(mux))))
 	os.Exit(1)
 }
-
-// gzipMiddleware — сжатие ответов для клиентов, понимающих gzip (браузеры
-// шлют Accept-Encoding всегда). Аватары в /api/rooms и /api/room — raw SVG:
-// gzip ужимает их в ~3 раза, base64 не нужен. mp4 пропускаем: ServeFile
-// отвечает на Range-запросы (докачка/плеер), сжатие их сломает.
-func gzipMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") || strings.HasSuffix(r.URL.Path, ".mp4") {
-			next.ServeHTTP(w, r)
-			return
-		}
-		w.Header().Set("Content-Encoding", "gzip")
-		w.Header().Add("Vary", "Accept-Encoding")
-		zw := gzip.NewWriter(w)
-		defer zw.Close()
-		next.ServeHTTP(gzipWriter{ResponseWriter: w, zw: zw}, r)
-	})
-}
-
-// gzipWriter — прозрачная запись в gzip.Writer; WriteHeader и заголовки
-// уходят в настоящий ResponseWriter как есть.
-type gzipWriter struct {
-	http.ResponseWriter
-	zw *gzip.Writer
-}
-
-func (g gzipWriter) Write(b []byte) (int, error) { return g.zw.Write(b) }
 
 // accessLog — строка на каждый HTTP-запрос: IP, метод, путь, статус, мс.
 // Детали (логин, имя файла) — в событиях обработчиков, здесь только
