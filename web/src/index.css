@@ -21,6 +21,9 @@
   --warn: oklch(0.62 0.13 75); /* плохая связь */
   --recording: oklch(0.55 0.17 25);
 
+  /* Текст ошибки входа: шаг светлее destructive (0.62 → 0.80). */
+  --danger-300: oklch(0.8 0.12 25);
+
   /* Рампы (OKLCH, общая шкала светлоты) — тема инвариантна */
   --neutral-100: #f3f5fe;
   --neutral-200: #e4e7f5;
@@ -114,6 +117,8 @@
   --warn: oklch(0.62 0.13 75);
   --recording: oklch(0.55 0.17 25);
 
+  --danger-300: oklch(0.73 0.13 25);
+
   --shadow-sm: 0 0 0 1px #cfd3e5;
   --shadow-md: 0 0 0 1px #b2b6ca, 0 6px 18px rgb(22 24 38 / 0.12);
   --shadow-lg: 0 0 0 1px #9397ab, 0 16px 40px rgb(22 24 38 / 0.18);
@@ -178,6 +183,8 @@
   --color-ai-800: var(--ai-800);
   --color-ai-900: var(--ai-900);
 
+  --color-danger-300: var(--danger-300);
+
   --shadow-sm: var(--shadow-sm);
   --shadow-md: var(--shadow-md);
   --shadow-lg: var(--shadow-lg);
@@ -185,6 +192,20 @@
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
   --radius-lg: var(--radius-lg);
+
+  /* Экран входа: размеры по спецификации (10/11/12/13/15/21px). */
+  --text-9: 9px;
+  --text-10: 10px;
+  --text-11: 11px;
+  --text-12: 12px;
+  --text-13: 13px;
+  --text-15: 15px;
+  --text-21: 21px;
+
+  --width-login: 380px;
+
+  --tracking-mono: 0.06em;
+  --tracking-title: -0.01em;
 
   --animate-rec: rec 1.8s ease-in-out infinite;
   --animate-breathe: breathe 2.6s ease-in-out infinite;

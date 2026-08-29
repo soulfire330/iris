@@ -420,6 +420,15 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
       setCamOn(!on)
     }
   }
+  // Намерение с экрана входа: микрофон/камера включаются сразу после
+  // коннекта (localStorage пишет LoginPage). Дальше управление в комнате.
+  useEffect(() => {
+    if (!connected) return
+    if (localStorage.getItem('iris.login.mic') === '1' && !micOn) void setMic(true)
+    if (localStorage.getItem('iris.login.cam') === '1' && !camOn) void setCam(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connected])
+
   const setScreen = async (on: boolean) => {
     if (!local) return
     setScreenOn(on)

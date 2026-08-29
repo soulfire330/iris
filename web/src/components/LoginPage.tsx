@@ -1,146 +1,343 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  ArrowRight,
+  CaretDown,
+  Microphone,
+  MicrophoneSlash,
+  Plugs,
+  VideoCamera,
+  VideoCameraSlash,
+} from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { fetchRooms, login, type RoomOption, type Session } from '@/lib/api'
+import { initials } from '@/lib/names'
 import { cn } from '@/lib/utils'
 
+// Намерение «с чем войти»: микрофон/камера включаются в комнате после
+// коннекта (RoomPage читает те же ключи). Логин — предзаполнение поля.
+const LS_LOGIN = 'iris.login.login'
+const LS_MIC = 'iris.login.mic'
+const LS_CAM = 'iris.login.cam'
+
+// Русская плюрализация: 1 комната, 2 комнаты, 5 комнат, 21 комната.
+function roomsPlural(n: number): string {
+  const m = n % 10
+  const h = n % 100
+  if (m === 1 && h !== 11) return 'комната'
+  if (m >= 2 && m <= 4 && (h < 12 || h > 14)) return 'комнаты'
+  return 'комнат'
+}
+
 export function LoginPage({ onLogin }: { onLogin: (s: Session) => void }) {
-  const [loginName, setLoginName] = useState('')
+  const [loginName, setLoginName] = useState(() => localStorage.getItem(LS_LOGIN) ?? '')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  // Комнаты для селекта: список публичен и грузится до логина. Одна комната —
-  // селект не показываем (выбор не нужен); список не загрузился — вход
-  // заблокирован до повторной попытки (без комнаты токен не выдать).
+  // Сервер не ответил на опрос комнат — «сервер не отвечает, пробуем снова».
+  const [offline, setOffline] = useState(false)
   const [rooms, setRooms] = useState<RoomOption[]>([])
-  const [roomsError, setRoomsError] = useState('')
   const [room, setRoom] = useState('')
+  // Развёрнут ли полный список комнат (видно три, дальше — «Ещё N комнат»).
+  const [expanded, setExpanded] = useState(false)
+  // Вход отклонён (401) — красная рамка пароля и строка под ним.
+  const [badLogin, setBadLogin] = useState(false)
+  // Намерение входа: разрешение спрашиваем в момент нажатия, не при загрузке.
+  const [micOn, setMicOn] = useState(() => localStorage.getItem(LS_MIC) === '1')
+  const [camOn, setCamOn] = useState(() => localStorage.getItem(LS_CAM) === '1')
 
-  const loadRooms = useCallback(async () => {
-    setRoomsError('')
-    try {
-      const list = await fetchRooms()
-      setRooms(list)
-      // Первая комната конфига — по умолчанию (порядок списка — порядок конфига).
-      setRoom((cur) => cur || (list[0]?.name ?? ''))
-    } catch {
-      setRoomsError('Не удалось загрузить комнаты')
+  const selected = useMemo(() => rooms.find((r) => r.name === room) ?? null, [rooms, room])
+
+  // Живой опрос: счётчики людей и метка записи обновляются, пока человек
+  // стоит на экране входа. Ошибка — «сервер не отвечает», опрос продолжается
+  // (переподключение автоматическое, кнопки «повторить» нет).
+  useEffect(() => {
+    let stopped = false
+    const poll = async () => {
+      try {
+        const list = await fetchRooms()
+        if (stopped) return
+        setRooms(list)
+        setOffline(false)
+        // Выбор по умолчанию — первая комната конфига; при её исчезновении
+        // из конфига — снова первая.
+        setRoom((cur) => (cur && list.some((r) => r.name === cur) ? cur : list[0]?.name ?? ''))
+      } catch {
+        if (!stopped) setOffline(true)
+      }
+    }
+    void poll()
+    const t = setInterval(poll, 5000)
+    return () => {
+      stopped = true
+      clearInterval(t)
     }
   }, [])
 
-  useEffect(() => {
-    void loadRooms()
-  }, [loadRooms])
+  const askPermission = async (constraints: MediaStreamConstraints) => {
+    const stream = await navigator.mediaDevices.getUserMedia(constraints)
+    // Разрешение получено, сам захват начнёт комната: треки гасим, чтобы
+    // индикатор микрофона в браузере не горел на экране входа.
+    stream.getTracks().forEach((t) => t.stop())
+  }
+
+  const toggleMic = async () => {
+    if (micOn) {
+      setMicOn(false)
+      localStorage.removeItem(LS_MIC)
+      return
+    }
+    try {
+      await askPermission({ audio: true })
+      setMicOn(true)
+      localStorage.setItem(LS_MIC, '1')
+    } catch {
+      // Разрешение не дали — остаёмся выключенными, подсказок не надо.
+    }
+  }
+
+  const toggleCam = async () => {
+    if (camOn) {
+      setCamOn(false)
+      localStorage.removeItem(LS_CAM)
+      return
+    }
+    try {
+      await askPermission({ video: true })
+      setCamOn(true)
+      localStorage.setItem(LS_CAM, '1')
+    } catch {
+      // Разрешение не дали — остаёмся выключенными.
+    }
+  }
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!selected) return
     setBusy(true)
-    setError('')
+    setBadLogin(false)
     try {
-      onLogin(await login(loginName.trim(), password, room))
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка')
+      localStorage.setItem(LS_LOGIN, loginName.trim())
+      onLogin(await login(loginName.trim(), password, selected.name))
+    } catch {
+      setBadLogin(true)
     } finally {
       setBusy(false)
     }
   }
 
+  // «Этот логин уже в комнате» — предупреждение, не запрет: LiveKit пускает
+  // второй сеанс с тем же identity, в сетке появится вторая плитка.
+  const loginAlreadyInRoom =
+    selected != null && loginName.trim() !== '' && selected.participants.some((p) => p.identity === loginName.trim())
+
+  // Логин из конфига — свой у каждого, поэтому выбор комнаты пароль не
+  // очищает (очистка была бы нужна при общем пароле на комнату).
+  const dim = offline || !selected
+
+  const visibleRooms = expanded ? rooms : rooms.slice(0, 3)
+  const hiddenRooms = rooms.length - 3
+
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <img src="/logo.svg" alt="Iris" className="h-7 w-7 rounded-md" />
-            <h1 className="text-lg font-medium leading-none">Iris</h1>
+      <div className="w-login max-w-full space-y-6">
+        {/* Блок 1: шапка и выбор комнаты */}
+        <header className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <img src="/logo.svg" alt="Iris" className="size-6" />
+            <h1 className="text-15 font-medium leading-none">Iris</h1>
           </div>
-          <span className="font-mono text-xs text-muted-foreground">{window.location.hostname}</span>
-        </div>
-        <form onSubmit={submit} className="mt-8 space-y-4">
-          {roomsError ? (
-            <div className="space-y-2">
-              <p className="text-sm text-destructive">{roomsError}</p>
-              <Button type="button" variant="secondary" className="w-full" onClick={() => void loadRooms()}>
-                Повторить
-              </Button>
-            </div>
-          ) : (
-            <>
-              <div className="space-y-1.5">
-                <Label htmlFor="login" className="text-xs text-muted-foreground">
-                  Логин
-                </Label>
-                <Input
-                  id="login"
-                  value={loginName}
-                  onChange={(e) => setLoginName(e.target.value)}
-                  autoComplete="username"
-                  required
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-xs text-muted-foreground">
-                  Пароль
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  required
-                />
-              </div>
-              {error && <p className="text-sm text-destructive">{error}</p>}
-              {/* Селект комнаты — между полями и кнопкой: перед входом, но не первым действием. */}
-              {rooms.length > 1 && (
-                <div className="space-y-1.5 pt-2">
-                  <Label htmlFor="room" className="text-xs text-muted-foreground">
-                    Комната
-                  </Label>
-                  <div className="relative">   
-                    <select
-                      id="room"
-                      value={room}
-                      onChange={(e) => setRoom(e.target.value)}
+          <span className="font-mono text-10 uppercase tracking-mono text-neutral-600">{window.location.hostname}</span>
+        </header>
+
+        {rooms.length === 1 ? (
+          // Одна комната в конфиге — списка нет, выбор сделан за человека.
+          <h2 className="text-21 font-medium tracking-title">{rooms[0].display}</h2>
+        ) : (
+          <>
+            <h2 className="text-21 font-medium tracking-title">Куда заходим</h2>
+            <div className="space-y-1.5">
+              {visibleRooms.map((r) => {
+                const active = r.name === room
+                return (
+                  <button
+                    key={r.name}
+                    type="button"
+                    onClick={() => setRoom(r.name)}
+                    className={cn(
+                      'flex w-full items-center gap-3 rounded-sm border px-3 py-2 text-left transition-colors',
+                      'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+                      active
+                        ? 'border-primary bg-card'
+                        : 'border-neutral-800 bg-transparent hover:border-neutral-700 hover:bg-card',
+                    )}
+                  >
+                    <span
                       className={cn(
-                        'h-8 w-full min-w-0 appearance-none rounded-lg border border-input bg-transparent py-1 pr-9 pl-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50',
+                        'flex size-3.5 flex-none items-center justify-center rounded-full border',
+                        active ? 'border-primary' : 'border-neutral-700',
                       )}
                     >
-                      {rooms.map((r) => (
-                        <option key={r.name} value={r.name}>
-                          {r.display}
-                        </option>
-                      ))}
-                    </select>
-                    <svg
-                      aria-hidden
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-                    >
-                      <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </div>
-                </div>
+                      {active && <span className="size-1.5 rounded-full bg-primary" />}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-13">{r.display}</span>
+                      <span className="flex items-center gap-3 font-mono text-10 uppercase tracking-mono text-neutral-500">
+                        {r.num_participants > 0 ? (
+                          <span>
+                            {r.num_participants} в комнате
+                          </span>
+                        ) : (
+                          <span className="text-neutral-600">пусто</span>
+                        )}
+                        {r.recording && (
+                          <span className="flex items-center gap-1">
+                            <span className="size-1.25 animate-rec rounded-full bg-recording" />
+                            запись
+                          </span>
+                        )}
+                      </span>
+                    </span>
+                    {r.num_participants > 0 && (
+                      <span className="flex flex-none items-center">
+                        {r.participants.slice(0, 3).map((p, i) => (
+                          <span
+                            key={p.identity}
+                            className={cn(
+                              'flex size-5.5 items-center justify-center rounded-full border bg-neutral-800 text-9 text-neutral-300',
+                              // Обводка — цветом фона строки: аватары «врезаны» в строку.
+                              active ? 'border-card' : 'border-background',
+                              i > 0 && '-ml-0.5',
+                            )}
+                          >
+                            {initials(p.name)}
+                          </span>
+                        ))}
+                        {r.num_participants > 3 && (
+                          <span
+                            className={cn(
+                              'flex size-5.5 items-center justify-center rounded-full border bg-neutral-800 text-9 text-neutral-300',
+                              active ? 'border-card' : 'border-background',
+                              '-ml-0.5',
+                            )}
+                          >
+                            +{r.num_participants - 3}
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+              {!expanded && hiddenRooms > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setExpanded(true)}
+                  className="flex items-center gap-1.5 pl-0 text-13 text-neutral-500 transition-colors hover:text-neutral-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  <CaretDown size={15} />
+                  Ещё {hiddenRooms} {roomsPlural(hiddenRooms)}
+                </button>
               )}
-              <Button
-                type="submit"
-                variant="outline"
-                className="w-full"
-                disabled={busy || roomsError !== '' || rooms.length === 0}
-              >
-                {busy ? 'Входим…' : (
-                  <>
-                    Войти в комнату
-                    <span aria-hidden>→</span>
-                  </>
-                )}
-              </Button>
-            </>
+            </div>
+          </>
+        )}
+
+        <form onSubmit={submit} className="space-y-6">
+          {/* Блок 2: логин и пароль */}
+          <div className={cn('space-y-3', dim && 'pointer-events-none opacity-45')}>
+            <div className="space-y-1.5">
+              <Label htmlFor="login" className="text-12 text-muted-foreground">
+                Логин
+              </Label>
+              <Input
+                id="login"
+                value={loginName}
+                onChange={(e) => {
+                  setLoginName(e.target.value)
+                  setBadLogin(false)
+                }}
+                autoComplete="username"
+                className={cn(loginAlreadyInRoom && 'border-warn/50')}
+                required
+              />
+              {loginAlreadyInRoom && (
+                <p className="text-11 text-warn">Этот логин уже в комнате — второй сеанс с тем же именем.</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="text-12 text-muted-foreground">
+                Пароль
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  setBadLogin(false)
+                }}
+                autoComplete="current-password"
+                className={cn(badLogin && 'border-destructive/60')}
+                required
+              />
+              {badLogin && <p className="text-11 text-danger-300">Логин или пароль не подошли.</p>}
+            </div>
+          </div>
+
+          {/* Блок 3: микрофон и камера — с чем войти */}
+          <div className={cn('flex items-center gap-3 pt-0.5', dim && 'pointer-events-none opacity-45')}>
+            <button
+              type="button"
+              onClick={() => void toggleMic()}
+              aria-pressed={micOn}
+              title="Микрофон"
+              className={cn(
+                'flex size-9 flex-none items-center justify-center rounded-sm border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+                micOn
+                  ? 'border-primary text-primary'
+                  : 'border-neutral-800 text-neutral-500 hover:border-neutral-700 hover:text-neutral-300',
+              )}
+            >
+              {micOn ? <Microphone size={15} weight="fill" /> : <MicrophoneSlash size={15} />}
+            </button>
+            <button
+              type="button"
+              onClick={() => void toggleCam()}
+              aria-pressed={camOn}
+              title="Камера"
+              className={cn(
+                'flex size-9 flex-none items-center justify-center rounded-sm border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+                camOn
+                  ? 'border-primary text-primary'
+                  : 'border-neutral-800 text-neutral-500 hover:border-neutral-700 hover:text-neutral-300',
+              )}
+            >
+              {camOn ? <VideoCamera size={15} weight="fill" /> : <VideoCameraSlash size={15} />}
+            </button>
+            <span className="text-11 text-neutral-600">
+              {micOn && camOn ? 'микрофон и камера включены' : micOn ? 'микрофон включён' : camOn ? 'камера включена' : 'выключены'}
+            </span>
+          </div>
+
+          {/* Блок 4: вход */}
+          {offline && (
+            <div className="flex items-center gap-2 rounded-sm bg-background px-3 py-2 shadow-sm">
+              <Plugs size={15} className="flex-none text-warn" />
+              <span className="text-12 text-neutral-500">Сервер не отвечает, пробуем снова…</span>
+            </div>
           )}
+          <Button
+            type="submit"
+            variant="outline"
+            className={cn('flex w-full items-center justify-center gap-2', offline && 'opacity-45')}
+            disabled={busy || offline || !selected}
+          >
+            <span className="truncate">
+              {busy ? 'Входим…' : `Войти в «${selected?.display ?? ''}»`}
+            </span>
+            <ArrowRight size={15} className="flex-none" />
+          </Button>
         </form>
       </div>
     </div>

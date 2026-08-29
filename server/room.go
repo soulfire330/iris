@@ -85,12 +85,50 @@ func (a *App) handleRoom(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleRooms — публичный список комнат для экрана логина (до авторизации):
-// порядок — как в конфиге, display — подпись в селекте. Секретов нет — имя
-// комнаты и так видно в конфиге LiveKit.
+// порядок — как в конфиге, display — подпись в селекте. Сверху статики —
+// живое состояние: участники (identity — логин, для проверки «логин уже в
+// комнате»; первые три дают аватары), счётчик и идёт ли запись. Секретов
+// нет: имя комнаты и так видно в конфиге LiveKit.
+// LiveKit недоступен — 502: экран входа показывает «сервер не отвечает».
 func (a *App) handleRooms(w http.ResponseWriter, r *http.Request) {
-	out := make([]RoomCfg, len(a.cfg.Rooms))
-	copy(out, a.cfg.Rooms)
+	ctx := r.Context()
+	out := make([]roomState, 0, len(a.cfg.Rooms))
+	for _, rc := range a.cfg.Rooms {
+		st := roomState{Name: rc.Name, Display: rc.Display}
+		plist, err := a.livekit.ListParticipants(ctx, &livekit.ListParticipantsRequest{Room: rc.Name})
+		if err != nil {
+			slog.Error("rooms: livekit unavailable", "room", rc.Name, "err", err)
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "livekit недоступен"})
+			return
+		}
+		// Имя участника приходит от LiveKit (SetName в токене). Egress-бот
+		// записи людям не участник (kind != STANDARD).
+		for _, p := range plist.Participants {
+			if p.Kind != livekit.ParticipantInfo_STANDARD {
+				continue
+			}
+			st.Participants = append(st.Participants, roomStateParticipant{Identity: p.Identity, Name: p.Name})
+		}
+		st.NumParticipants = len(st.Participants)
+		a.recMu.Lock()
+		_, st.Recording = a.activeRec[rc.Name]
+		a.recMu.Unlock()
+		out = append(out, st)
+	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+type roomState struct {
+	Name            string                 `json:"name"`
+	Display         string                 `json:"display"`
+	Recording       bool                   `json:"recording"`
+	NumParticipants int                    `json:"num_participants"`
+	Participants    []roomStateParticipant `json:"participants"`
+}
+
+type roomStateParticipant struct {
+	Identity string `json:"identity"`
+	Name     string `json:"name"`
 }
 
 type roomParticipant struct {

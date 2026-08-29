@@ -9,11 +9,15 @@ export interface Session {
   token_ttl_sec: number
 }
 
-// Комната для селекта логина: name — ID (имя комнаты LiveKit, им параметризуются
-// все API-вызовы), display — подпись в селекте и шапке.
+// Комната для экрана входа: name — ID (имя комнаты LiveKit, им параметризуются
+// все API-вызовы), display — подпись; остальное — живое состояние с сервера:
+// participants (identity — логин, первые три — аватары), счётчик, запись.
 export interface RoomOption {
   name: string
   display: string
+  recording: boolean
+  num_participants: number
+  participants: { identity: string; name: string }[]
 }
 
 // authToken — LiveKit JWT сессии: им авторизуется внутренний API (Bearer).
@@ -39,8 +43,8 @@ async function req(input: string, init?: RequestInit): Promise<Response> {
   }
 }
 
-// Список комнат публичен (селект на экране логина — до авторизации). Порядок —
-// как в конфиге, первая — выбор по умолчанию.
+// Список комнат публичен (экран входа — до авторизации), состояние живое:
+// счётчики и запись обновляются при каждом опросе. Порядок — как в конфиге.
 export async function fetchRooms(): Promise<RoomOption[]> {
   const res = await req('/api/rooms')
   const data = await res.json().catch(() => [])
