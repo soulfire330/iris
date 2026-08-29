@@ -263,6 +263,15 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
     return list
   }, [local, remote, speakers, session, micOn, camOn, screenOn])
 
+  // ВРЕМЕННО: фейковые участники — посмотреть сетку при многих людях.
+  const fakeMembers: Member[] = [
+    { id: 'fake-1', name: 'Иван Петров', role: 'dev', seed: 'fake-1', speaking: true, muted: false, poor: false, cameraOn: false, screenSharing: false },
+    { id: 'fake-2', name: 'Мария Смирнова', role: 'qa', seed: 'fake-2', speaking: false, muted: true, poor: false, cameraOn: false, screenSharing: false },
+    { id: 'fake-3', name: 'Пётр Иванов', role: 'dev', seed: 'fake-3', speaking: false, muted: false, poor: true, cameraOn: false, screenSharing: false },
+    { id: 'fake-4', name: 'Анна Кузнецова', role: 'qa', seed: 'fake-4', speaking: false, muted: false, poor: false, cameraOn: false, screenSharing: false },
+    { id: 'fake-5', name: 'Сергей Волков', role: 'dev', seed: 'fake-5', speaking: false, muted: true, poor: false, cameraOn: false, screenSharing: false },
+  ]
+
   // Люди из снимка /api/room, которых ещё нет в наших LiveKit-участниках:
   // рисуем плитку-заглушку (grayscale-аватарка с «дыханием»). Connected
   // приходит раньше ParticipantConnected для уже сидящих, поэтому заглушка
@@ -321,7 +330,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
   const speaker = members.find((m) => m.speaking)
 
   // Заглушки рисуются и до, и после коннекта (пока не пришёл участник).
-  const tileCount = (connected ? members.length : 1) + pendingOthers.length
+  const tileCount = (connected ? members.length : 1) + pendingOthers.length + (connected ? fakeMembers.length : 0)
 
   // Колонки подбираются под доступную высоту: плитки 16:9 всегда помещаются
   // в поле сетки (вместо фиксированных колонок от числа людей, которые при
@@ -568,6 +577,22 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
                     }
                   />
                 ))}
+              {fakeMembers.map((f) => (
+                <ParticipantTile
+                  key={f.id}
+                  width={fitTileW || undefined}
+                  state={{
+                    name: f.name,
+                    role: f.role,
+                    seed: f.seed,
+                    speaking: f.speaking,
+                    muted: f.muted,
+                    poor: f.poor,
+                    cameraOn: false,
+                    screenSharing: false,
+                  }}
+                />
+              ))}
               {pendingOthers.map((p) => (
                 <ParticipantTile
                   key={p.identity}

@@ -54,7 +54,7 @@ export function ParticipantTile({
     <div
       style={width ? { width: `${width}px` } : undefined}
       className={cn(
-        'group relative aspect-[16/9] w-full max-w-[50cqw] overflow-hidden rounded-md bg-card shadow-sm max-sm:aspect-[4/5] max-sm:w-[calc(50%-6px)] max-sm:only:w-full max-sm:max-w-full',
+        'group relative aspect-[16/9] w-full max-w-[50cqw] overflow-hidden rounded-md bg-card shadow-sm max-sm:aspect-[4/5] max-sm:w-[calc(50%-6px)] max-sm:only:w-full max-sm:max-w-full @container',
         hasVideo ? 'bg-muted' : 'flex flex-col items-center justify-center gap-2 p-3',
         speaking && 'shadow-[0_0_0_1px_var(--speaking),0_0_0_5px_var(--accent-900)]',
       )}
@@ -89,16 +89,16 @@ export function ParticipantTile({
             <img
               src={avatarUrl(state.id ?? '', state.seed)}
               alt=""
-              className="h-[max(60px,8.5cqw)] w-[max(60px,8.5cqw)] flex-none rounded-full bg-secondary object-cover grayscale animate-breathe"
+              className="h-[max(40px,32cqw)] w-[max(40px,32cqw)] max-xl:h-[max(40px,20cqw)] max-xl:w-[max(40px,20cqw)] max-lg:h-[max(40px,14cqw)] max-lg:w-[max(40px,14cqw)] max-sm:h-[max(40px,10cqw)] max-sm:w-[max(40px,10cqw)] flex-none rounded-full bg-secondary object-cover grayscale animate-breathe"
             />
           ) : participant ? (
             <img
               src={avatarUrl(participant.identity, state.seed)}
               alt=""
-              className="h-[max(60px,8.5cqw)] w-[max(60px,8.5cqw)] flex-none rounded-full bg-secondary object-cover"
+              className="h-[max(40px,32cqw)] w-[max(40px,32cqw)] max-xl:h-[max(40px,20cqw)] max-xl:w-[max(40px,20cqw)] max-lg:h-[max(40px,14cqw)] max-lg:w-[max(40px,14cqw)] max-sm:h-[max(40px,10cqw)] max-sm:w-[max(40px,10cqw)] flex-none rounded-full bg-secondary object-cover"
             />
           ) : (
-            <div className="flex h-[max(60px,8.5cqw)] w-[max(60px,8.5cqw)] flex-none items-center justify-center rounded-full bg-secondary text-[max(18px,2.4cqw)] font-medium text-secondary-foreground">
+            <div className="flex h-[max(40px,32cqw)] w-[max(40px,32cqw)] max-xl:h-[max(40px,20cqw)] max-xl:w-[max(40px,20cqw)] max-lg:h-[max(40px,14cqw)] max-lg:w-[max(40px,14cqw)] max-sm:h-[max(40px,10cqw)] max-sm:w-[max(40px,10cqw)] flex-none items-center justify-center rounded-full bg-secondary text-[max(16px,5cqw)] max-xl:text-[max(16px,3.2cqw)] font-medium text-secondary-foreground">
               {initials(name)}
             </div>
           )}
