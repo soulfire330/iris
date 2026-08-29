@@ -56,6 +56,7 @@ export function CallBar(p: CallBarProps) {
         <IconButton onClick={p.onCamera} active={p.cameraOn} activeClass="text-destructive" disabled={!p.camAvailable} label={p.cameraOn ? 'Выключить камеру' : 'Включить камеру'}>
           <VideoCamera />
         </IconButton>
+        <span className="h-6 w-px bg-neutral-600/50" />
         <IconButton
           onClick={p.onRecord}
           active={p.recording}
