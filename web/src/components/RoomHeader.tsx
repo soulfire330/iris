@@ -87,7 +87,7 @@ export function RoomHeader({
           </div>
         )}
         {screenLabel && (
-          <div className="flex items-center gap-2 rounded-full border border-accent-700 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em] text-accent-300 max-sm:border-0 max-sm:p-0">
+          <div className="flex items-center gap-2 rounded-full border border-accent-700 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em] text-accent-300 max-lg:hidden">
             <MonitorArrowUp className="h-3 w-3" />
             <span className="max-sm:hidden">{screenLabel}</span>
           </div>

@@ -499,7 +499,8 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
               !stageMember.isLocal && (
                 <Button
                   variant="ghost"
-                  className="gap-2 text-[12px]"
+                  aria-label="Во весь экран"
+                  className="gap-2 text-[12px] max-sm:hidden"
                   onClick={() => stageRef.current?.requestFullscreen()}
                 >
                   <CornersOut className="h-[15px] w-[15px]" />

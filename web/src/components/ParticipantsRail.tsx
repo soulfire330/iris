@@ -29,6 +29,11 @@ export function ParticipantsRail({
     const el = railRef.current
     if (!el) return
     const ro = new ResizeObserver(() => {
+      // Ниже lg рельс — горизонтальная панель: плитки не нужны, только строки.
+      if (window.matchMedia('(max-width: 64rem)').matches) {
+        setMaxTiles(0)
+        return
+      }
       const tileH = ((el.clientWidth - 24) * 9) / 16 + 6 // 16:9 + зазор 6px
       setMaxTiles(Math.max(1, Math.floor(el.clientHeight / tileH)))
     })
@@ -48,13 +53,16 @@ export function ParticipantsRail({
   }
 
   return (
-    <aside className="flex min-h-0 flex-col border-l border-border bg-card">
-      <div className="flex flex-none items-center gap-2 border-b border-border px-3 py-3">
+    <aside className="flex min-h-0 flex-col border-l border-border bg-card max-lg:flex-none max-lg:border-l-0 max-lg:border-t">
+      <div className="flex flex-none items-center gap-2 border-b border-border px-3 py-3 max-lg:hidden">
         <Users className="h-[13px] w-[13px] text-neutral-500" />
         <span className="text-[12px] font-medium">Участники</span>
         <span className="ml-auto font-mono text-[10px] text-neutral-600">{members.length}</span>
       </div>
-      <div ref={railRef} className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto p-3">
+      <div
+        ref={railRef}
+        className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto p-3 max-lg:flex-row max-lg:gap-2 max-lg:overflow-x-auto max-lg:overflow-y-hidden max-lg:p-2"
+      >
         {useTiles ? (
           members.map((m) => {
             const videoSource = tileVideo(m)
@@ -134,6 +142,7 @@ export function ParticipantsRail({
                 onClick={clickable ? () => onSelect(m) : undefined}
                 className={cn(
                   'flex flex-none items-center gap-3 rounded-sm p-2',
+                  'max-lg:w-16 max-lg:flex-col max-lg:gap-1 max-lg:p-1',
                   staged && !m.speaking && 'shadow-[0_0_0_2px_#6b7280]',
                   m.speaking && 'shadow-[0_0_0_1px_var(--speaking),0_0_0_5px_var(--accent-900)]',
                   clickable && 'cursor-pointer hover:bg-primary/5',
@@ -144,36 +153,38 @@ export function ParticipantsRail({
                     participant={m.participant}
                     source={videoSource}
                     muted={m.isLocal}
-                    className="h-[28px] w-[28px] flex-none rounded-sm bg-muted object-cover"
+                    className="h-[28px] w-[28px] flex-none rounded-sm bg-muted object-cover max-lg:h-10 max-lg:w-10 max-lg:rounded-full"
                   />
                 ) : staged && hideCameraOfSelected ? (
-                  <div className="h-[28px] w-[28px] flex-none rounded-sm bg-[repeating-linear-gradient(135deg,var(--color-neutral-800)_0_6px,var(--color-neutral-900)_6px_12px)]" />
+                  <div className="h-[28px] w-[28px] flex-none rounded-sm bg-[repeating-linear-gradient(135deg,var(--color-neutral-800)_0_6px,var(--color-neutral-900)_6px_12px)] max-lg:h-10 max-lg:w-10 max-lg:rounded-full" />
                 ) : m.participant ? (
                   <img
                     src={avatarUrl(m.participant.identity, m.seed)}
                     alt=""
-                    className="h-[28px] w-[28px] flex-none rounded-sm object-cover"
+                    className="h-[28px] w-[28px] flex-none rounded-sm object-cover max-lg:h-10 max-lg:w-10 max-lg:rounded-full"
                   />
                 ) : (
-                  <div className="flex h-[28px] w-[28px] flex-none items-center justify-center rounded-full bg-neutral-800 text-[11px] font-medium text-neutral-300">
+                  <div className="flex h-[28px] w-[28px] flex-none items-center justify-center rounded-full bg-neutral-800 text-[11px] font-medium text-neutral-300 max-lg:h-10 max-lg:w-10">
                     {initials(m.name)}
                   </div>
                 )}
-                <span className="flex-1 truncate text-[12px]">{m.name}</span>
+                <span className="flex-1 truncate text-[12px] max-lg:w-full max-lg:text-center max-lg:text-[10px]">
+                  {m.name}
+                </span>
                 {m.poor ? (
-                  <CellSignalMedium className="h-[13px] w-[13px] flex-none text-warn" />
+                  <CellSignalMedium className="h-[13px] w-[13px] flex-none text-warn max-lg:hidden" />
                 ) : (
                   <>
                     {m.muted ? (
-                      <MicrophoneSlash className="h-[13px] w-[13px] flex-none text-neutral-600" />
+                      <MicrophoneSlash className="h-[13px] w-[13px] flex-none text-neutral-600 max-lg:hidden" />
                     ) : (
-                      <Microphone className="h-[13px] w-[13px] flex-none text-neutral-500" />
+                      <Microphone className="h-[13px] w-[13px] flex-none text-neutral-500 max-lg:hidden" />
                     )}
                     {m.screenSharing && (
-                      <MonitorArrowUp className="h-[13px] w-[13px] flex-none text-destructive" />
+                      <MonitorArrowUp className="h-[13px] w-[13px] flex-none text-destructive max-lg:hidden" />
                     )}
                     {m.cameraOn && (
-                      <VideoCamera className="h-[13px] w-[13px] flex-none text-destructive" />
+                      <VideoCamera className="h-[13px] w-[13px] flex-none text-destructive max-lg:hidden" />
                     )}
                   </>
                 )}

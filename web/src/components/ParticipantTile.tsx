@@ -50,7 +50,7 @@ export function ParticipantTile({
   return (
     <div
       className={cn(
-        'group relative aspect-[16/9] w-full max-w-[50cqw] overflow-hidden rounded-md bg-card shadow-sm max-md:max-w-full',
+        'group relative aspect-[16/9] w-full max-w-[50cqw] overflow-hidden rounded-md bg-card shadow-sm max-sm:max-w-full',
         hasVideo ? 'bg-muted' : 'flex flex-col items-center justify-center gap-2 p-3',
         speaking && 'shadow-[0_0_0_1px_var(--speaking),0_0_0_5px_var(--accent-900)]',
       )}

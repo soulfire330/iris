@@ -88,7 +88,7 @@ export function CallBar(p: CallBarProps) {
             <span>{p.onClosePanel ? 'Закрыть' : 'Сводки и чат'}</span>
           </Button>
         )}
-        <span className="font-mono text-[10px] text-neutral-600 max-sm:hidden">docker · self-hosted</span>
+        <span className="font-mono text-[10px] text-neutral-600 max-md:hidden">docker · self-hosted</span>
         <Button
           onClick={p.onLeave}
           variant="ghost"
