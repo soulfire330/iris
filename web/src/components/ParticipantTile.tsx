@@ -89,16 +89,16 @@ export function ParticipantTile({
             <img
               src={avatarUrl(state.id ?? '', state.seed)}
               alt=""
-              className="h-[max(40px,32cqw)] w-[max(40px,32cqw)] max-xl:h-[max(40px,20cqw)] max-xl:w-[max(40px,20cqw)] max-lg:h-[max(40px,14cqw)] max-lg:w-[max(40px,14cqw)] max-sm:h-[max(40px,10cqw)] max-sm:w-[max(40px,10cqw)] flex-none rounded-full bg-secondary object-cover grayscale animate-breathe"
+              className="h-[max(40px,20cqw)] w-[max(40px,20cqw)] min-2xl:h-[max(40px,32cqw)] min-2xl:w-[max(40px,32cqw)] max-lg:h-[max(40px,14cqw)] max-lg:w-[max(40px,14cqw)] max-sm:h-[max(40px,10cqw)] max-sm:w-[max(40px,10cqw)] flex-none rounded-full bg-secondary object-cover grayscale animate-breathe"
             />
           ) : participant ? (
             <img
               src={avatarUrl(participant.identity, state.seed)}
               alt=""
-              className="h-[max(40px,32cqw)] w-[max(40px,32cqw)] max-xl:h-[max(40px,20cqw)] max-xl:w-[max(40px,20cqw)] max-lg:h-[max(40px,14cqw)] max-lg:w-[max(40px,14cqw)] max-sm:h-[max(40px,10cqw)] max-sm:w-[max(40px,10cqw)] flex-none rounded-full bg-secondary object-cover"
+              className="h-[max(40px,20cqw)] w-[max(40px,20cqw)] min-2xl:h-[max(40px,32cqw)] min-2xl:w-[max(40px,32cqw)] max-lg:h-[max(40px,14cqw)] max-lg:w-[max(40px,14cqw)] max-sm:h-[max(40px,10cqw)] max-sm:w-[max(40px,10cqw)] flex-none rounded-full bg-secondary object-cover"
             />
           ) : (
-            <div className="flex h-[max(40px,32cqw)] w-[max(40px,32cqw)] max-xl:h-[max(40px,20cqw)] max-xl:w-[max(40px,20cqw)] max-lg:h-[max(40px,14cqw)] max-lg:w-[max(40px,14cqw)] max-sm:h-[max(40px,10cqw)] max-sm:w-[max(40px,10cqw)] flex-none items-center justify-center rounded-full bg-secondary text-[max(16px,5cqw)] max-xl:text-[max(16px,3.2cqw)] font-medium text-secondary-foreground">
+            <div className="flex h-[max(40px,20cqw)] w-[max(40px,20cqw)] min-2xl:h-[max(40px,32cqw)] min-2xl:w-[max(40px,32cqw)] max-lg:h-[max(40px,14cqw)] max-lg:w-[max(40px,14cqw)] max-sm:h-[max(40px,10cqw)] max-sm:w-[max(40px,10cqw)] flex-none items-center justify-center rounded-full bg-secondary text-[max(16px,3.2cqw)] min-2xl:text-[max(16px,5cqw)] font-medium text-secondary-foreground">
               {initials(name)}
             </div>
           )}

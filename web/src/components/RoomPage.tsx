@@ -529,7 +529,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
           <div className="flex min-h-0 min-w-0 flex-col gap-4 p-6">
             <div
               ref={gridRef}
-              className="flex min-h-0 flex-1 flex-wrap content-center justify-center gap-3 @container"
+              className="flex min-h-0 flex-1 flex-wrap content-start justify-center gap-3 overflow-y-auto p-1.5 @container"
             >
               {/* Плитка-заглушка себя, пока комната подключается. */}
               {!connected && !error && (
