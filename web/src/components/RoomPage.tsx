@@ -328,37 +328,41 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
   // низком окне вылезают за край и наезжают на панель звонка). На типичных
   // десктопах подбор даёт те же колонки, что диздок (2/3/4 по числу людей).
   const gridRef = useRef<HTMLDivElement>(null)
-  const [fitCols, setFitCols] = useState<number | null>(null)
+  // Ширина плитки, посчитанная подбором; передаётся каждой плитке напрямую.
+  const [fitTileW, setFitTileW] = useState(0)
   useEffect(() => {
     const el = gridRef.current
     if (!el) return
     const ro = new ResizeObserver(() => {
       const n = tileCount
-      if (n <= 1) {
-        setFitCols(1)
-        return
-      }
       const gap = 12 // gap-3
       const { width: w, height: h } = el.getBoundingClientRect()
       if (w <= 0 || h <= 0) return
-      let best = 1
+      if (n <= 1) {
+        setFitTileW(0) // капы CSS: max-w-[50cqw], на телефоне max-w-full
+        return
+      }
       let bestW = 0
-      let fallback = 1
-      let minNeed = Infinity
       for (let k = 1; k <= n; k++) {
         const rows = Math.ceil(n / k)
         const tileW = (w - (k - 1) * gap) / k
         const needH = (rows * tileW * 9) / 16 + (rows - 1) * gap
-        if (tileW > bestW && needH <= h) {
-          best = k
-          bestW = tileW
-        }
-        if (needH < minNeed) {
-          minNeed = needH
-          fallback = k
+        if (tileW > bestW && needH <= h) bestW = tileW
+      }
+      // Ни один вариант не влез по высоте — минимальное переполнение.
+      if (bestW === 0) {
+        let minNeed = Infinity
+        for (let k = 1; k <= n; k++) {
+          const rows = Math.ceil(n / k)
+          const tileW = (w - (k - 1) * gap) / k
+          const needH = (rows * tileW * 9) / 16 + (rows - 1) * gap
+          if (needH < minNeed) {
+            minNeed = needH
+            bestW = tileW
+          }
         }
       }
-      setFitCols(bestW > 0 ? best : fallback)
+      setFitTileW(bestW)
     })
     ro.observe(el)
     return () => ro.disconnect()
@@ -505,17 +509,13 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
           <div className="flex min-h-0 min-w-0 flex-col gap-4 p-6">
             <div
               ref={gridRef}
-              className={cn(
-                'grid min-h-0 flex-1 content-center justify-items-center gap-3 @container',
-              )}
-              style={
-                fitCols ? { gridTemplateColumns: `repeat(${fitCols}, minmax(0, 1fr))` } : undefined
-              }
+              className="flex min-h-0 flex-1 flex-wrap content-center justify-center gap-3 @container"
             >
               {/* Плитка-заглушка себя, пока комната подключается. */}
               {!connected && !error && (
                 <ParticipantTile
                   connecting
+                  width={fitTileW || undefined}
                   state={{
                     id: session.login,
                     name: session.name,
@@ -535,6 +535,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
                     key={m.id}
                     participant={m.participant}
                     isLocal={m.isLocal}
+                    width={fitTileW || undefined}
                     state={{
                       name: m.name,
                       role: m.role,
@@ -560,6 +561,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
                 <ParticipantTile
                   key={p.identity}
                   connecting
+                  width={fitTileW || undefined}
                   state={{
                     id: p.identity,
                     name: p.name || p.identity,

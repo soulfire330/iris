@@ -31,6 +31,7 @@ export function ParticipantTile({
   isLocal,
   connecting,
   state,
+  width,
   onExpand,
 }: {
   participant?: Participant
@@ -39,6 +40,8 @@ export function ParticipantTile({
   // спиннера, чтобы сетка не дёргалась, когда плитка станет живой.
   connecting?: boolean
   state: TileState
+  // Ширина от подбора колонок (flex-сетка); без неё — w-full.
+  width?: number
   // Развернуть поток (камеру/экран) на крупный план; undefined — нечего разворачивать.
   onExpand?: () => void
 }) {
@@ -49,6 +52,7 @@ export function ParticipantTile({
 
   return (
     <div
+      style={width ? { width: `${width}px` } : undefined}
       className={cn(
         'group relative aspect-[16/9] w-full max-w-[50cqw] overflow-hidden rounded-md bg-card shadow-sm max-sm:max-w-full',
         hasVideo ? 'bg-muted' : 'flex flex-col items-center justify-center gap-2 p-3',
