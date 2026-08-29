@@ -18,10 +18,23 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Listen  string     `yaml:"listen"`
-	LiveKit LiveKitCfg `yaml:"livekit"`
-	DataDir string     `yaml:"data_dir"`
-	WebDir  string     `yaml:"web_dir"`
+	Listen    string         `yaml:"listen"`
+	LiveKit   LiveKitCfg     `yaml:"livekit"`
+	DataDir   string         `yaml:"data_dir"`
+	WebDir    string         `yaml:"web_dir"`
+	RateLimit RateLimitConfig `yaml:"rate_limit"`
+}
+
+// RateLimitConfig — per-IP лимиты публичных эндпоинтов (login, rooms,
+// avatar, public/*). Rate <= 0 — лимитер выключен.
+type RateLimitConfig struct {
+	Login  RateLimitBucket `yaml:"login"`
+	Public RateLimitBucket `yaml:"public"`
+}
+
+type RateLimitBucket struct {
+	Rate  float64 `yaml:"rate"`  // запросов в секунду на IP
+	Burst int     `yaml:"burst"` // размер всплеска
 }
 
 // RoomCfg — комната: name — ID (имя комнаты LiveKit, участвует в путях

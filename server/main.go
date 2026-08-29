@@ -42,13 +42,17 @@ func main() {
 	mux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ok"))
 	})
-	mux.HandleFunc("POST /api/login", app.handleLogin)
+	// Публичная поверхность — per-IP лимиты (см. rate_limit в конфиге):
+	// логин отдельно (жёстче), остальное общим бакетом.
+	loginLimiter := newIPLimiter(cfg.Server.RateLimit.Login)
+	publicLimiter := newIPLimiter(cfg.Server.RateLimit.Public)
+	mux.Handle("POST /api/login", loginLimiter(http.HandlerFunc(app.handleLogin)))
 	// Список комнат публичен: селект на экране логина — до авторизации.
-	mux.HandleFunc("GET /api/rooms", app.handleRooms)
+	mux.Handle("GET /api/rooms", publicLimiter(http.HandlerFunc(app.handleRooms)))
 	// Внутренний API — под LiveKit JWT (Bearer), см. requireToken. Публичные:
 	// login, rooms, healthz и аватары (картинки без заголовков).
 	mux.HandleFunc("GET /api/room", app.requireToken(app.handleRoom))
-	mux.HandleFunc("GET /api/avatar/{login}", app.handleAvatar)
+	mux.Handle("GET /api/avatar/{login}", publicLimiter(http.HandlerFunc(app.handleAvatar)))
 	mux.HandleFunc("POST /api/recording/start", app.requireToken(app.handleRecordingStart))
 	mux.HandleFunc("POST /api/recording/stop", app.requireToken(app.handleRecordingStop))
 	mux.HandleFunc("POST /api/recording/summary", app.requireToken(app.handleRecordingSummary))
@@ -56,9 +60,9 @@ func main() {
 	mux.HandleFunc("GET /api/recordings/{name}", app.requireToken(app.handleRecordingDownload))
 	// Публичный API: те же данные (список со сводками, mp4), но под ключом
 	// PUBLIC_API_KEY. Статус комнаты — отдельный эндпоинт для дашбордов.
-	mux.HandleFunc("GET /api/public/recordings", app.publicAuth(app.handleRecordingsList))
-	mux.HandleFunc("GET /api/public/recordings/{name}", app.publicAuth(app.handleRecordingDownload))
-	mux.HandleFunc("GET /api/public/status", app.publicAuth(app.handlePublicStatus))
+	mux.Handle("GET /api/public/recordings", publicLimiter(app.publicAuth(app.handleRecordingsList)))
+	mux.Handle("GET /api/public/recordings/{name}", publicLimiter(app.publicAuth(app.handleRecordingDownload)))
+	mux.Handle("GET /api/public/status", publicLimiter(app.publicAuth(app.handlePublicStatus)))
 	mux.Handle("/", http.FileServer(http.Dir(cfg.Server.WebDir)))
 
 	// Сжатие ответов (gzip/brotli по Accept-Encoding): аватары в /api/rooms

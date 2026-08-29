@@ -13,6 +13,15 @@ server:
   data_dir: ./data
   # Путь в образе office (см. server/Dockerfile); в dev фронт отдаёт vite.
   web_dir: /usr/share/office/web-dist
+  # Per-IP лимиты публичных эндпоинтов (login, rooms, avatar, public/*):
+  # rate — запросов в секунду, burst — всплеск. 0 — выключено.
+  rate_limit:
+    login:
+      rate: 1
+      burst: 10
+    public:
+      rate: 5
+      burst: 20
 
 # Комнаты: name — ID (имя комнаты LiveKit, только латиница/цифры/точка/дефис/
 # подчёркивание), display — подпись в селекте логина и шапке. Порядок списка —
