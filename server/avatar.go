@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"log/slog"
 	"maps"
 	"net/http"
@@ -71,6 +72,20 @@ func avatarSVG(key, seed string) (string, error) {
 	avatarCache.m[key] = svg
 	avatarCache.Unlock()
 	return svg, nil
+}
+
+// participantAvatar — data URI аватара участника (identity+seed) или пустая
+// строка (нет seed/ошибка рендера). Кэш общий с /api/avatar: поллинг комнат
+// зверей не перегенерирует.
+func participantAvatar(identity, seed string) string {
+	if seed == "" {
+		return ""
+	}
+	svg, err := avatarSVG(identity+seed, identity+seed)
+	if err != nil {
+		return ""
+	}
+	return "data:image/svg+xml;base64," + base64.StdEncoding.EncodeToString([]byte(svg))
 }
 
 // handleAvatar — SVG-аватар сотрудника. Остался для плиток комнаты (главный

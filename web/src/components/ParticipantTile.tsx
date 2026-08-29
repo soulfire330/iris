@@ -17,6 +17,8 @@ export interface TileState {
   name: string
   role?: string
   seed?: string
+  // data URI из снимка /api/room; нет — фолбэк на /api/avatar
+  avatar?: string
   speaking: boolean
   muted: boolean
   poor: boolean
@@ -87,13 +89,13 @@ export function ParticipantTile({
         <>
           {connecting ? (
             <img
-              src={avatarUrl(state.id ?? '', state.seed)}
+              src={state.avatar ?? avatarUrl(state.id ?? '', state.seed)}
               alt=""
               className="h-[max(40px,20cqw)] w-[max(40px,20cqw)] min-2xl:h-[max(40px,32cqw)] min-2xl:w-[max(40px,32cqw)] max-lg:h-[max(40px,14cqw)] max-lg:w-[max(40px,14cqw)] max-sm:h-[max(40px,10cqw)] max-sm:w-[max(40px,10cqw)] flex-none rounded-full bg-secondary object-cover grayscale animate-breathe"
             />
           ) : participant ? (
             <img
-              src={avatarUrl(participant.identity, state.seed)}
+              src={state.avatar ?? avatarUrl(participant.identity, state.seed)}
               alt=""
               className="h-[max(40px,20cqw)] w-[max(40px,20cqw)] min-2xl:h-[max(40px,32cqw)] min-2xl:w-[max(40px,32cqw)] max-lg:h-[max(40px,14cqw)] max-lg:w-[max(40px,14cqw)] max-sm:h-[max(40px,10cqw)] max-sm:w-[max(40px,10cqw)] flex-none rounded-full bg-secondary object-cover"
             />

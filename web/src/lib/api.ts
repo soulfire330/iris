@@ -69,11 +69,14 @@ export async function login(login: string, password: string, room: string): Prom
 // (сервер берёт его из LiveKit), server_now_ms — часы сервера для
 // выравнивания тика. 0 в started_at_ms — комната ещё пуста.
 // participants — люди в комнате сейчас (для плиток-заглушек до коннекта).
+// avatar — data URI из /api/room (снимок); после коннекта новые участники
+// идут через LiveKit, их аватар — /api/avatar.
 export interface RoomParticipant {
   identity: string
   name: string
   seed?: string
   role?: string
+  avatar?: string
 }
 
 export interface RoomInfo {

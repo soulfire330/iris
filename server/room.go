@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -74,11 +73,14 @@ func (a *App) handleRoom(w http.ResponseWriter, r *http.Request) {
 			Role string `json:"role"`
 		}
 		_ = json.Unmarshal([]byte(p.Metadata), &meta)
+		// Avatar — data URI: снимок одноразовый, аватары нужны всем плиткам
+		// (после коннекта новые участники идут через /api/avatar).
 		out.Participants = append(out.Participants, roomParticipant{
 			Identity: p.Identity,
 			Name:     p.Name,
 			Seed:     meta.Seed,
 			Role:     meta.Role,
+			Avatar:   participantAvatar(p.Identity, meta.Seed),
 		})
 	}
 	out.NumParticipants = len(out.Participants)
@@ -117,10 +119,8 @@ func (a *App) handleRooms(w http.ResponseWriter, r *http.Request) {
 			pp := roomStateParticipant{Identity: p.Identity, Name: p.Name, Seed: meta.Seed}
 			// Аватары первым трём участникам — столько их видно на экране входа;
 			// остальным не отдаём (payload и генерация по минимуму).
-			if len(st.Participants) < 3 && meta.Seed != "" {
-				if svg, err := avatarSVG(p.Identity+meta.Seed, p.Identity+meta.Seed); err == nil {
-					pp.Avatar = "data:image/svg+xml;base64," + base64.StdEncoding.EncodeToString([]byte(svg))
-				}
+			if len(st.Participants) < 3 {
+				pp.Avatar = participantAvatar(p.Identity, meta.Seed)
 			}
 			st.Participants = append(st.Participants, pp)
 		}
@@ -153,4 +153,6 @@ type roomParticipant struct {
 	Name     string `json:"name"`
 	Seed     string `json:"seed,omitempty"`
 	Role     string `json:"role,omitempty"`
+	// Avatar — data URI: плитка-заглушка рисует без /api/avatar.
+	Avatar string `json:"avatar,omitempty"`
 }

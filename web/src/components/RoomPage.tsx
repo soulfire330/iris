@@ -600,6 +600,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
                     name: p.name || p.identity,
                     role: p.role,
                     seed: p.seed,
+                    avatar: p.avatar,
                     speaking: false,
                     muted: true,
                     poor: false,
