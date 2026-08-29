@@ -39,6 +39,7 @@ export function RoomHeader({
   connState,
   backendOnline,
   onOpenPanel,
+  panelBtnClass,
 }: {
   count: number
   elapsed: number
@@ -48,6 +49,8 @@ export function RoomHeader({
   connState: ConnState
   backendOnline: boolean
   onOpenPanel?: () => void
+  // Где прятать кнопку: комната — панель видна от lg, stage/summaries — от xl.
+  panelBtnClass?: string
 }) {
   const status = statusBadge(connState, backendOnline)
   const tone = tones[status.tone]
@@ -94,7 +97,7 @@ export function RoomHeader({
             variant="ghost"
             aria-label="Сводки и чат"
             title="Сводки и чат"
-            className="h-8 w-8 p-0 min-lg:hidden"
+            className={cn('h-8 w-8 p-0', panelBtnClass ?? 'min-lg:hidden')}
             onClick={onOpenPanel}
           >
             <ChatTeardropText className="h-4 w-4" />

@@ -327,6 +327,51 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
   const tileCols =
     tileCount >= 10 ? 'grid-cols-4' : tileCount >= 5 ? 'grid-cols-3' : tileCount >= 2 ? 'grid-cols-2' : 'grid-cols-1'
 
+  // Ниже md колонки подбираются под доступную высоту: плитки 16:9 всегда
+  // помещаются в поле сетки (в отличие от капа max-md:grid-cols-1, который
+  // при многих участниках вылезает за край и наезжает на панель звонка).
+  const gridRef = useRef<HTMLDivElement>(null)
+  const [fitCols, setFitCols] = useState<number | null>(null)
+  useEffect(() => {
+    const el = gridRef.current
+    if (!el) return
+    const mq = window.matchMedia('(max-width: 48rem)')
+    const ro = new ResizeObserver(() => {
+      if (!mq.matches) {
+        setFitCols(null)
+        return
+      }
+      const n = tileCount
+      if (n <= 1) {
+        setFitCols(1)
+        return
+      }
+      const gap = 12 // gap-3
+      const { width: w, height: h } = el.getBoundingClientRect()
+      if (w <= 0 || h <= 0) return
+      let best = 1
+      let bestW = 0
+      let fallback = 1
+      let minNeed = Infinity
+      for (let k = 1; k <= n; k++) {
+        const rows = Math.ceil(n / k)
+        const tileW = (w - (k - 1) * gap) / k
+        const needH = (rows * tileW * 9) / 16 + (rows - 1) * gap
+        if (tileW > bestW && needH <= h) {
+          best = k
+          bestW = tileW
+        }
+        if (needH < minNeed) {
+          minNeed = needH
+          fallback = k
+        }
+      }
+      setFitCols(bestW > 0 ? best : fallback)
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [tileCount])
+
   // Выключение = unpublishTrack: LiveKit mute() оставляет устройство живым
   // (индикатор микрофона в браузере не гаснет), а unpublish останавливает источник.
   // UI оптимистичный: кнопка переключается сразу, откат — только при ошибке.
@@ -406,6 +451,9 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
         connState={state}
         backendOnline={backendOnline}
         onOpenPanel={() => setPanelOpen(true)}
+        panelBtnClass={
+          layout === 'stage' || layout === 'summaries' ? 'min-xl:hidden' : 'min-lg:hidden'
+        }
         screenLabel={
           // Тег в шапке: «Экран», если кто-то демонстрирует (независимо от того,
           // чей поток на крупном плане); иначе — развёрнутая камера.
@@ -426,7 +474,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
         className={cn(
           'grid min-h-0 flex-1 [grid-template-rows:minmax(0,1fr)]',
           layout === 'stage' || layout === 'summaries'
-            ? '[grid-template-columns:1fr_208px_300px] max-lg:[grid-template-columns:1fr]'
+            ? '[grid-template-columns:1fr_208px_300px] max-xl:[grid-template-columns:1fr_208px] max-lg:[grid-template-columns:1fr]'
             : '[grid-template-columns:1fr_300px] max-lg:[grid-template-columns:1fr]',
         )}
       >
@@ -463,13 +511,17 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
         ) : (
           <div className="flex min-h-0 min-w-0 flex-col gap-4 p-6">
             <div
+              ref={gridRef}
               className={cn(
                 'grid min-h-0 flex-1 content-center justify-items-center gap-3 @container',
-                tileCols,
+                fitCols === null && tileCols,
                 // Кап колонок только при 2+: одному участнику всегда grid-cols-1,
                 // иначе респонсивный кап уводит его в левую ячейку двуколоночной сетки.
-                tileCount >= 2 && 'max-lg:grid-cols-2 max-md:grid-cols-1',
+                fitCols === null && tileCount >= 2 && 'max-lg:grid-cols-2 max-md:grid-cols-1',
               )}
+              style={
+                fitCols ? { gridTemplateColumns: `repeat(${fitCols}, minmax(0, 1fr))` } : undefined
+              }
             >
               {/* Плитка-заглушка себя, пока комната подключается. */}
               {!connected && !error && (
@@ -540,7 +592,9 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
         {layout === 'stage' || layout === 'summaries' ? (
           // В раскладке показа экран 16:9 оставляет место по бокам — колонки
           // живут вместе: рельс участников и панель секретаря одновременно.
-          <SecretaryPanel
+          // Ниже xl панель скрывается, открывается кнопкой в шапке (оверлей).
+          <div className="max-xl:hidden">
+            <SecretaryPanel
             tab={panel}
             onTabChange={onPanelChange}
             messages={chat.messages}
@@ -558,6 +612,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
             summariesBlocked={!!sharer}
             onAllSummaries={() => setSummariesOpen((o) => !o)}
           />
+          </div>
         ) : (
           <div className="hidden min-h-0 min-lg:block">
             <SecretaryPanel
