@@ -322,25 +322,17 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
 
   // Заглушки рисуются и до, и после коннекта (пока не пришёл участник).
   const tileCount = (connected ? members.length : 1) + pendingOthers.length
-  // Колонки от числа участников (диздок «Геометрия плитки»):
-  // 1 → 1 · 2 → 2 · 3—4 → 2 · 5—9 → 3 · 10+ → 4.
-  const tileCols =
-    tileCount >= 10 ? 'grid-cols-4' : tileCount >= 5 ? 'grid-cols-3' : tileCount >= 2 ? 'grid-cols-2' : 'grid-cols-1'
 
-  // Ниже md колонки подбираются под доступную высоту: плитки 16:9 всегда
-  // помещаются в поле сетки (в отличие от капа max-md:grid-cols-1, который
-  // при многих участниках вылезает за край и наезжает на панель звонка).
+  // Колонки подбираются под доступную высоту: плитки 16:9 всегда помещаются
+  // в поле сетки (вместо фиксированных колонок от числа людей, которые при
+  // низком окне вылезают за край и наезжают на панель звонка). На типичных
+  // десктопах подбор даёт те же колонки, что диздок (2/3/4 по числу людей).
   const gridRef = useRef<HTMLDivElement>(null)
   const [fitCols, setFitCols] = useState<number | null>(null)
   useEffect(() => {
     const el = gridRef.current
     if (!el) return
-    const mq = window.matchMedia('(max-width: 48rem)')
     const ro = new ResizeObserver(() => {
-      if (!mq.matches) {
-        setFitCols(null)
-        return
-      }
       const n = tileCount
       if (n <= 1) {
         setFitCols(1)
@@ -515,10 +507,6 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
               ref={gridRef}
               className={cn(
                 'grid min-h-0 flex-1 content-center justify-items-center gap-3 @container',
-                fitCols === null && tileCols,
-                // Кап колонок только при 2+: одному участнику всегда grid-cols-1,
-                // иначе респонсивный кап уводит его в левую ячейку двуколоночной сетки.
-                fitCols === null && tileCount >= 2 && 'max-lg:grid-cols-2 max-md:grid-cols-1',
               )}
               style={
                 fitCols ? { gridTemplateColumns: `repeat(${fitCols}, minmax(0, 1fr))` } : undefined
