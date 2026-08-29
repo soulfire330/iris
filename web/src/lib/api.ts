@@ -1,11 +1,19 @@
 export interface Session {
   token: string
   room: string
+  room_display: string
   name: string
   login: string
   role?: string
   avatar_seed: string
   token_ttl_sec: number
+}
+
+// Комната для селекта логина: name — ID (имя комнаты LiveKit, им параметризуются
+// все API-вызовы), display — подпись в селекте и шапке.
+export interface RoomOption {
+  name: string
+  display: string
 }
 
 // authToken — LiveKit JWT сессии: им авторизуется внутренний API (Bearer).
@@ -31,11 +39,20 @@ async function req(input: string, init?: RequestInit): Promise<Response> {
   }
 }
 
-export async function login(login: string, password: string): Promise<Session> {
+// Список комнат публичен (селект на экране логина — до авторизации). Порядок —
+// как в конфиге, первая — выбор по умолчанию.
+export async function fetchRooms(): Promise<RoomOption[]> {
+  const res = await req('/api/rooms')
+  const data = await res.json().catch(() => [])
+  if (!res.ok) throw new Error(data.error ?? `Ошибка ${res.status}`)
+  return data as RoomOption[]
+}
+
+export async function login(login: string, password: string, room: string): Promise<Session> {
   const res = await req('/api/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ login, password }),
+    body: JSON.stringify({ login, password, room }),
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error ?? `Ошибка ${res.status}`)
@@ -60,8 +77,8 @@ export interface RoomInfo {
   participants: RoomParticipant[]
 }
 
-export async function fetchRoomInfo(): Promise<RoomInfo> {
-  const res = await req('/api/room')
+export async function fetchRoomInfo(room: string): Promise<RoomInfo> {
+  const res = await req(`/api/room?room=${encodeURIComponent(room)}`)
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error ?? `Ошибка ${res.status}`)
   return data as RoomInfo
@@ -84,8 +101,8 @@ export interface RecordingFile {
   summary_text: string
 }
 
-export async function startRecording(login: string): Promise<void> {
-  const res = await req('/api/recording/start', {
+export async function startRecording(login: string, room: string): Promise<void> {
+  const res = await req(`/api/recording/start?room=${encodeURIComponent(room)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ login }),
@@ -97,14 +114,14 @@ export async function startRecording(login: string): Promise<void> {
 // Заказ AI-сводки для идущей записи (кнопка AI в панели звонка — видна только
 // при идущей записи). Флаг пишет бэкенд в sidecar записи, воркер-секретарь
 // разберёт её после стопа.
-export async function enableRecordingSummary(): Promise<void> {
-  const res = await req('/api/recording/summary', { method: 'POST' })
+export async function enableRecordingSummary(room: string): Promise<void> {
+  const res = await req(`/api/recording/summary?room=${encodeURIComponent(room)}`, { method: 'POST' })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error ?? `Ошибка ${res.status}`)
 }
 
-export async function stopRecording(login: string): Promise<{ stopped: boolean }> {
-  const res = await req('/api/recording/stop', {
+export async function stopRecording(login: string, room: string): Promise<{ stopped: boolean }> {
+  const res = await req(`/api/recording/stop?room=${encodeURIComponent(room)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ login }),
@@ -114,8 +131,8 @@ export async function stopRecording(login: string): Promise<{ stopped: boolean }
   return data as { stopped: boolean }
 }
 
-export async function fetchRecordings(): Promise<RecordingFile[]> {
-  const res = await req('/api/recordings')
+export async function fetchRecordings(room: string): Promise<RecordingFile[]> {
+  const res = await req(`/api/recordings?room=${encodeURIComponent(room)}`)
   const data = await res.json().catch(() => ([]))
   if (!res.ok) throw new Error(data.error ?? `Ошибка ${res.status}`)
   return data as RecordingFile[]

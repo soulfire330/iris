@@ -1,6 +1,6 @@
 # План выполнения — «Виртуальный офис»
 
-Лёгкий корпоративный голосовой хаб команды: одна постоянная комната, сотрудники в config.yaml, запись встреч по кнопке. Развёртывание — `docker compose up` на корпоративном сервере. AI-секретарь — эпик 2, в работе (§9).
+Лёгкий корпоративный голосовой хаб команды: комнаты и сотрудники в config.yaml, запись встреч по кнопке. Развёртывание — `docker compose up` на корпоративном сервере. AI-секретарь — эпик 2, в работе (§9).
 
 Глоссарий: [CONTEXT.md](../CONTEXT.md). Зафиксированные решения: [docs/adr/](adr/0001-config-instead-of-db.md), [adr/0002-egress-audio-recording.md](adr/0002-egress-audio-recording.md), [adr/0003-tls-turn-scheme.md](adr/0003-tls-turn-scheme.md), [adr/0004-ai-summary-secretary.md](adr/0004-ai-summary-secretary.md).
 
@@ -73,9 +73,12 @@ server:
     host: localhost:7880
     api_key: <key>
     api_secret: <secret>
-  room: office
   data_dir: ./data
   web_dir: ./web-dist
+
+rooms:
+  - name: office
+    display: Офис
 
 employees:
   - login: ivanov
@@ -110,7 +113,7 @@ LLM_MODEL=…
 | GET | `/api/recordings/{name}` | Скачивание MP4. |
 | GET | `/api/healthz` | Живучесть. |
 
-Файлы записей: `recordings/2025-06-11_14-30_ivanov.mp4` (дата-время-логин стартовавшего).
+Файлы записей: `recordings/<room>/2025-06-11_14-30_ivanov.mp4` (дата-время-логин стартовавшего).
 
 ## 6. Модель комнаты
 

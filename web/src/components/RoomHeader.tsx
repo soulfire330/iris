@@ -38,6 +38,7 @@ export function RoomHeader({
   screenLabel,
   connState,
   backendOnline,
+  roomDisplay,
   onOpenPanel,
   panelBtnClass,
 }: {
@@ -48,6 +49,7 @@ export function RoomHeader({
   screenLabel?: string
   connState: ConnState
   backendOnline: boolean
+  roomDisplay: string
   onOpenPanel?: () => void
   // Где прятать кнопку: комната — панель видна от lg, stage/summaries — от xl.
   panelBtnClass?: string
@@ -58,7 +60,7 @@ export function RoomHeader({
     <header className="flex flex-none items-center justify-between gap-6 border-b border-border bg-card px-6 py-3">
       <div className="flex min-w-0 items-center gap-4">
         <img src="/logo.svg" alt="Iris" className="h-6 w-6 flex-none" />
-        <span className="text-[14px] font-medium">Iris · общая комната</span>
+        <span className="truncate text-[14px] font-medium">Iris · {roomDisplay}</span>
         <span className="font-mono text-[11px] text-neutral-600">
           {count} в комнате · {formatClock(elapsed)}
         </span>

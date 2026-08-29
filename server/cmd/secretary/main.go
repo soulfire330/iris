@@ -15,6 +15,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"mime/multipart"
 	"net/http"
@@ -82,41 +83,41 @@ func main() {
 	}
 }
 
-// sweep — один проход по каталогу: всё, что просит сводку и готово к разбору.
+// sweep — один проход по каталогу (включая подкаталоги комнат): всё, что
+// просит сводку и готово к разбору.
 func sweep(dir string, stt, llm cfg, client *http.Client) error {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return fmt.Errorf("каталог записей: %w", err)
-	}
 	mp4s := 0
-	for _, e := range entries {
-		name := e.Name()
-		if !strings.HasSuffix(name, ".mp4") {
-			continue
+	err := filepath.WalkDir(dir, func(path string, e fs.DirEntry, err error) error {
+		if err != nil || e.IsDir() || !strings.HasSuffix(e.Name(), ".mp4") {
+			return err
 		}
 		mp4s++
 		info, err := e.Info()
 		if err != nil {
-			continue
+			return nil
 		}
-		base := strings.TrimSuffix(name, ".mp4")
+		base := strings.TrimSuffix(path, ".mp4")
 
-		sc, err := readJSON[sidecar](filepath.Join(dir, base+".json"))
+		sc, err := readJSON[sidecar](base + ".json")
 		if err != nil || !sc.Summary {
-			continue // не AI-запись
+			return nil // не AI-запись
 		}
 
-		sumPath := filepath.Join(dir, base+".summary.json")
+		sumPath := base + ".summary.json"
 		if done, retry := summaryState(sumPath); done || retry {
-			continue
+			return nil
 		}
 
 		if time.Since(info.ModTime()) < finalAge {
-			continue // egress ещё дописывает файл
+			return nil // egress ещё дописывает файл
 		}
-		if err := process(filepath.Join(dir, name), sumPath, sc, stt, llm, client); err != nil {
-			slog.Error("secretary: failed to process", "file", name, "err", err)
+		if err := process(path, sumPath, sc, stt, llm, client); err != nil {
+			slog.Error("secretary: failed to process", "file", path, "err", err)
 		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("каталог записей: %w", err)
 	}
 	slog.Debug("secretary: sweep", "mp4", mp4s)
 	return nil

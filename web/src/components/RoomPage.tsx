@@ -35,6 +35,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
 
   const { room, remote, speakers, connected, state, error, startedAt, clockOffsetMs, roomInfo } = useRoom(
     session.token,
+    session.room,
     DEFAULT_DSP,
   )
   const backendOnline = useBackendStatus()
@@ -51,14 +52,14 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
   // Счётчик непрочитанного в заголовке вкладки, пока она неактивна
   // (дизайн: состояние комнаты выносится в document.title).
   useEffect(() => {
+    const title = `Iris · ${session.room_display}`
     const sync = () => {
-      document.title =
-        chat.unread > 0 && document.hidden ? `(${chat.unread}) Iris · общая комната` : 'Iris · общая комната'
+      document.title = chat.unread > 0 && document.hidden ? `(${chat.unread}) ${title}` : title
     }
     sync()
     document.addEventListener('visibilitychange', sync)
     return () => document.removeEventListener('visibilitychange', sync)
-  }, [chat.unread])
+  }, [chat.unread, session.room_display])
 
   // Переключение на таб чата гасит счётчик непрочитанного.
   const onPanelChange = (t: PanelTab) => {
@@ -141,10 +142,10 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
     setActionError('')
     try {
       if (recording) {
-        await stopRecording(session.login)
+        await stopRecording(session.login, session.room)
         setTimeout(() => setRecTick((t) => t + 1), 2000)
       } else {
-        await startRecording(session.login)
+        await startRecording(session.login, session.room)
       }
     } catch (e) {
       setActionError(e instanceof Error ? e.message : String(e))
@@ -159,7 +160,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
     if (!recording || aiSummary) return
     setActionError('')
     try {
-      await enableRecordingSummary()
+      await enableRecordingSummary(session.room)
     } catch (e) {
       setActionError(e instanceof Error ? e.message : String(e))
     }
@@ -173,13 +174,13 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
   useEffect(() => {
     if (panel !== 'summaries' && !summariesOpen) return
     let alive = true
-    fetchRecordings()
+    fetchRecordings(session.room)
       .then((list) => alive && setRecordings(list))
       .catch(() => {})
     return () => {
       alive = false
     }
-  }, [panel, panelOpen, recording, recTick, summariesOpen])
+  }, [panel, panelOpen, recording, recTick, summariesOpen, session.room])
 
   // Сводки готовит воркер-секретарь фоном (STT занимает минуты) — таб и окно
   // «Все сводки» обновляются сами, пока открыты.
@@ -465,6 +466,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
         secretary={aiSummary}
         connState={state}
         backendOnline={backendOnline}
+        roomDisplay={session.room_display}
         onOpenPanel={() => setPanelOpen(true)}
         panelBtnClass={
           layout === 'stage' || layout === 'summaries' ? 'min-xl:hidden' : 'min-lg:hidden'
@@ -616,6 +618,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
             onSend={chat.send}
             recordings={recordings}
             recording={recording}
+            room={session.room}
             aiSummary={aiSummary}
             recStartedAt={recStartedAt}
             recElapsedMs={recElapsedMs}
@@ -637,6 +640,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
               onSend={chat.send}
               recordings={recordings}
               recording={recording}
+              room={session.room}
               aiSummary={aiSummary}
               recStartedAt={recStartedAt}
               recElapsedMs={recElapsedMs}
@@ -662,6 +666,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
               onSend={chat.send}
               recordings={recordings}
               recording={recording}
+              room={session.room}
               aiSummary={aiSummary}
               recStartedAt={recStartedAt}
               recElapsedMs={recElapsedMs}

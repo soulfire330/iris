@@ -30,6 +30,7 @@ export function SecretaryPanel({
   onSend,
   recordings,
   recording,
+  room,
   aiSummary,
   recStartedAt,
   recElapsedMs,
@@ -47,6 +48,8 @@ export function SecretaryPanel({
   onSend: (text: string) => void
   recordings: RecordingFile[]
   recording: boolean
+  // Комната: записи и их скачивание параметризуются ею (?room=).
+  room: string
   // Живая запись — её строка вверху «Прошлых встреч»: время старта записи,
   // её длительность, участники; aiSummary — заказана ли сводка («появится
   // после звонка»).
@@ -228,7 +231,7 @@ export function SecretaryPanel({
                             </span>
                           )}
                           <a
-                            href={`/api/recordings/${encodeURIComponent(r.name)}`}
+                            href={`/api/recordings/${encodeURIComponent(r.name)}?room=${encodeURIComponent(room)}`}
                             download
                             title="Скачать"
                             className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-foreground/5 hover:text-foreground"

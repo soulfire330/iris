@@ -72,8 +72,8 @@ func (a *App) recordingsDir() string {
 }
 
 // activeRecording — активный egress комнаты или nil.
-func (a *App) activeRecording(ctx context.Context) (*livekit.EgressInfo, error) {
-	resp, err := a.egress.ListEgress(ctx, &livekit.ListEgressRequest{RoomName: a.cfg.Server.Room, Active: true})
+func (a *App) activeRecording(ctx context.Context, room string) (*livekit.EgressInfo, error) {
+	resp, err := a.egress.ListEgress(ctx, &livekit.ListEgressRequest{RoomName: room, Active: true})
 	if err != nil {
 		return nil, err
 	}
@@ -106,14 +106,25 @@ type recMeta struct {
 	Summary      bool     `json:"summary,omitempty"`
 }
 
-// handleRecordingStart — POST /api/recording/start. Тело: {login}. 409, если
-// запись уже идёт; имя файла берёт на себя бэкенд, egress пишет в volume.
+// roomDir — каталог записей комнаты: recordings/<room>/. Записи разных комнат
+// не смешиваются, подкаталог создаётся при старте записи (egress пишет в
+// volume по тому же относительному пути).
+func (a *App) roomDir(room string) string {
+	return filepath.Join(a.recordingsDir(), room)
+}
+
+// handleRecordingStart — POST /api/recording/start?room=. Тело: {login}. 409,
+// если запись уже идёт; имя файла берёт на себя бэкенд, egress пишет в volume.
 // AI-сводка кнопкой не стартуется — заказывается отдельно при идущей записи
 // (handleRecordingSummary).
 func (a *App) handleRecordingStart(w http.ResponseWriter, r *http.Request) {
 	a.recMu.Lock()
 	defer a.recMu.Unlock()
 
+	room, ok := a.roomFromRequest(w, r)
+	if !ok {
+		return
+	}
 	var req struct {
 		Login string `json:"login"`
 	}
@@ -127,8 +138,8 @@ func (a *App) handleRecordingStart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	if active, err := a.activeRecording(ctx); err != nil {
-		slog.Error("recording: livekit unavailable", "op", "start", "err", err)
+	if active, err := a.activeRecording(ctx, room); err != nil {
+		slog.Error("recording: livekit unavailable", "op", "start", "room", room, "err", err)
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "livekit недоступен"})
 		return
 	} else if active != nil {
@@ -136,25 +147,25 @@ func (a *App) handleRecordingStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dir := a.recordingsDir()
+	dir := a.roomDir(room)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		slog.Error("recording: failed to create dir", "err", err)
+		slog.Error("recording: failed to create dir", "room", room, "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "не удалось создать каталог записей"})
 		return
 	}
 	name := recordingName(dir, time.Now(), req.Login)
 
 	info, err := a.egress.StartRoomCompositeEgress(ctx, &livekit.RoomCompositeEgressRequest{
-		RoomName:  a.cfg.Server.Room,
+		RoomName:  room,
 		AudioOnly: true,
 		Output: &livekit.RoomCompositeEgressRequest_File{File: &livekit.EncodedFileOutput{
 			FileType:        livekit.EncodedFileType_MP4,
-			Filepath:        filepath.Join(egressOutDir, name),
+			Filepath:        filepath.Join(egressOutDir, room, name),
 			DisableManifest: true, // свой sidecar пишем сами, манифесты egress не нужны
 		}},
 	})
 	if err != nil {
-		slog.Error("recording: failed to start", "err", err)
+		slog.Error("recording: failed to start", "room", room, "err", err)
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "не удалось начать запись"})
 		return
 	}
@@ -162,7 +173,7 @@ func (a *App) handleRecordingStart(w http.ResponseWriter, r *http.Request) {
 	// Метаданные комнаты — единственный канал статуса для клиентов. Если не
 	// обновились, egress уже идёт, но тега ни у кого не будет — лог на потом.
 	if _, err := a.livekit.UpdateRoomMetadata(ctx, &livekit.UpdateRoomMetadataRequest{
-		Room: a.cfg.Server.Room, Metadata: recRoomMeta(name, time.Now()),
+		Room: room, Metadata: recRoomMeta(name, time.Now()),
 	}); err != nil {
 		slog.Warn("recording: room metadata not updated", "name", name, "err", err)
 	}
@@ -170,7 +181,7 @@ func (a *App) handleRecordingStart(w http.ResponseWriter, r *http.Request) {
 	// Sidecar пишем сразу, а не на стопе: egress может завершиться сам (комната
 	// опустела), и тогда без него записи не будет в списке. Флаг summary сюда
 	// попадает позже — из handleRecordingSummary.
-	a.activeRecName = name
+	a.activeRec[room] = name
 	if b, err := json.Marshal(recMeta{
 		StartedBy: req.Login,
 		StartedAt: time.Unix(0, info.StartedAt).Format(time.RFC3339), // StartedAt — наносекунды
@@ -180,7 +191,7 @@ func (a *App) handleRecordingStart(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	slog.Info("recording started", "login", req.Login, "name", name, "egress_id", info.EgressId)
+	slog.Info("recording started", "room", room, "login", req.Login, "name", name, "egress_id", info.EgressId)
 	writeJSON(w, http.StatusOK, map[string]string{"egress_id": info.EgressId, "name": name})
 }
 
@@ -191,6 +202,10 @@ func (a *App) handleRecordingStop(w http.ResponseWriter, r *http.Request) {
 	a.recMu.Lock()
 	defer a.recMu.Unlock()
 
+	room, ok := a.roomFromRequest(w, r)
+	if !ok {
+		return
+	}
 	ctx := r.Context()
 	// Кто жмёт стоп — из тела (как на старте): без этого «кто остановил» не
 	// узнать, авторизации на запросах нет. Пустое тело — старые клиенты.
@@ -199,16 +214,16 @@ func (a *App) handleRecordingStop(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = json.NewDecoder(r.Body).Decode(&req)
 
-	active, err := a.activeRecording(ctx)
+	active, err := a.activeRecording(ctx, room)
 	if err != nil {
-		slog.Error("recording: livekit unavailable", "op", "stop", "err", err)
+		slog.Error("recording: livekit unavailable", "op", "stop", "room", room, "err", err)
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "livekit недоступен"})
 		return
 	}
 	if active == nil {
-		a.activeRecName = ""
-		a.clearRecordingMeta(ctx)
-		slog.Info("recording was not active", "login", req.Login)
+		delete(a.activeRec, room)
+		a.clearRecordingMeta(ctx, room)
+		slog.Info("recording was not active", "room", room, "login", req.Login)
 		writeJSON(w, http.StatusOK, map[string]bool{"stopped": false})
 		return
 	}
@@ -223,7 +238,7 @@ func (a *App) handleRecordingStop(w http.ResponseWriter, r *http.Request) {
 	// Снимок участников на стопе (решение Q8) — «краткий список» в UI. Сам
 	// egress ещё числится в комнате, пока не вышел, — отбрасываем его.
 	var participants []string
-	if resp, err := a.livekit.ListParticipants(ctx, &livekit.ListParticipantsRequest{Room: a.cfg.Server.Room}); err == nil {
+	if resp, err := a.livekit.ListParticipants(ctx, &livekit.ListParticipantsRequest{Room: room}); err == nil {
 		for _, p := range resp.Participants {
 			if p.Kind == livekit.ParticipantInfo_EGRESS {
 				continue
@@ -233,10 +248,10 @@ func (a *App) handleRecordingStop(w http.ResponseWriter, r *http.Request) {
 		sort.Strings(participants)
 	}
 
-	// Имя файла — своё с момента старта (activeRecName): StopEgress может
+	// Имя файла — своё с момента старта (activeRec): StopEgress может
 	// вернуться до финализации, и FileResults тогда пуст. Результат egress —
 	// фолбэк (запись, начатая до рестарта бэкенда).
-	name := a.activeRecName
+	name := a.activeRec[room]
 	if name == "" && len(info.FileResults) > 0 {
 		name = filepath.Base(info.FileResults[0].Filename)
 	}
@@ -244,7 +259,7 @@ func (a *App) handleRecordingStop(w http.ResponseWriter, r *http.Request) {
 		// Стартовый sidecar уже есть (см. handleRecordingStart) — дополняем его:
 		// иначе перезапись потеряет флаг summary. Без sidecar (старые записи) —
 		// собираем из результата egress и имени файла.
-		path := filepath.Join(a.recordingsDir(), strings.TrimSuffix(name, ".mp4")+".json")
+		path := filepath.Join(a.roomDir(room), strings.TrimSuffix(name, ".mp4")+".json")
 		var meta recMeta
 		if b, err := os.ReadFile(path); err == nil {
 			_ = json.Unmarshal(b, &meta)
@@ -259,9 +274,9 @@ func (a *App) handleRecordingStop(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	a.activeRecName = ""
-	a.clearRecordingMeta(ctx)
-	slog.Info("recording stopped", "login", req.Login, "name", name, "participants", len(participants))
+	delete(a.activeRec, room)
+	a.clearRecordingMeta(ctx, room)
+	slog.Info("recording stopped", "room", room, "login", req.Login, "name", name, "participants", len(participants))
 	writeJSON(w, http.StatusOK, map[string]bool{"stopped": true})
 }
 
@@ -273,10 +288,14 @@ func (a *App) handleRecordingSummary(w http.ResponseWriter, r *http.Request) {
 	a.recMu.Lock()
 	defer a.recMu.Unlock()
 
+	room, ok := a.roomFromRequest(w, r)
+	if !ok {
+		return
+	}
 	ctx := r.Context()
-	active, err := a.activeRecording(ctx)
+	active, err := a.activeRecording(ctx, room)
 	if err != nil {
-		slog.Error("summary: livekit unavailable", "err", err)
+		slog.Error("summary: livekit unavailable", "room", room, "err", err)
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "livekit недоступен"})
 		return
 	}
@@ -285,7 +304,7 @@ func (a *App) handleRecordingSummary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	name := a.activeRecName
+	name := a.activeRec[room]
 	if name == "" && len(active.FileResults) > 0 {
 		name = filepath.Base(active.FileResults[0].Filename)
 	}
@@ -295,7 +314,7 @@ func (a *App) handleRecordingSummary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path := filepath.Join(a.recordingsDir(), strings.TrimSuffix(name, ".mp4")+".json")
+	path := filepath.Join(a.roomDir(room), strings.TrimSuffix(name, ".mp4")+".json")
 	var meta recMeta
 	if b, err := os.ReadFile(path); err == nil {
 		_ = json.Unmarshal(b, &meta)
@@ -311,9 +330,9 @@ func (a *App) handleRecordingSummary(w http.ResponseWriter, r *http.Request) {
 	// Метаданные: summary-вариант, но rec_started_at сохраняем — клиент живёт по
 	// нему (длительность записи), терять нельзя.
 	if _, err := a.livekit.UpdateRoomMetadata(ctx, &livekit.UpdateRoomMetadataRequest{
-		Room: a.cfg.Server.Room, Metadata: recRoomMetaSummary(name, meta.StartedAt),
+		Room: room, Metadata: recRoomMetaSummary(name, meta.StartedAt),
 	}); err != nil {
-		slog.Warn("summary: room metadata not updated", "name", name, "err", err)
+		slog.Warn("summary: room metadata not updated", "room", room, "name", name, "err", err)
 	}
 	slog.Info("summary ordered", "name", name)
 	writeJSON(w, http.StatusOK, map[string]bool{"summary": true})
@@ -330,12 +349,12 @@ func fillRecMeta(meta *recMeta, name, startedAt string) {
 	}
 }
 
-// clearRecordingMeta — гасит тег записи у всех клиентов.
-func (a *App) clearRecordingMeta(ctx context.Context) {
+// clearRecordingMeta — гасит тег записи у всех клиентов комнаты.
+func (a *App) clearRecordingMeta(ctx context.Context, room string) {
 	if _, err := a.livekit.UpdateRoomMetadata(ctx, &livekit.UpdateRoomMetadataRequest{
-		Room: a.cfg.Server.Room, Metadata: "",
+		Room: room, Metadata: "",
 	}); err != nil {
-		slog.Warn("recording: failed to clear room metadata", "err", err)
+		slog.Warn("recording: failed to clear room metadata", "room", room, "err", err)
 	}
 }
 
@@ -411,20 +430,25 @@ func filterByDate(list []recFile, from, to time.Time) []recFile {
 	return out
 }
 
-// handleRecordingsList — GET /api/recordings. Файлы из volume; метаданные — из
-// sidecar-json, при его отсутствии (запись оборвалась сама) — из имени файла.
-// Идущую запись не показываем: mp4 ещё пишется. date_from/date_to — фильтр
-// по дате звонка (YYYY-MM-DD или RFC3339), работает и в публичном API.
+// handleRecordingsList — GET /api/recordings?room=. Файлы комнаты из volume;
+// метаданные — из sidecar-json, при его отсутствии (запись оборвалась сама) —
+// из имени файла. Идущую запись не показываем: mp4 ещё пишется.
+// date_from/date_to — фильтр по дате звонка (YYYY-MM-DD или RFC3339),
+// работает и в публичном API.
 func (a *App) handleRecordingsList(w http.ResponseWriter, r *http.Request) {
+	room, ok := a.roomFromRequest(w, r)
+	if !ok {
+		return
+	}
 	from, to, err := dateRange(r.URL.Query())
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "невалидный date_from/date_to: " + err.Error()})
 		return
 	}
 	ctx := r.Context()
-	active, err := a.activeRecording(ctx)
+	active, err := a.activeRecording(ctx, room)
 	if err != nil {
-		slog.Error("recordings: livekit unavailable", "err", err)
+		slog.Error("recordings: livekit unavailable", "room", room, "err", err)
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "livekit недоступен"})
 		return
 	}
@@ -433,7 +457,7 @@ func (a *App) handleRecordingsList(w http.ResponseWriter, r *http.Request) {
 		activeName = filepath.Base(active.FileResults[0].Filename)
 	}
 
-	dir := a.recordingsDir()
+	dir := a.roomDir(room)
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -501,15 +525,19 @@ func parseRecName(name string) (login, startedAt string) {
 	return login, startedAt
 }
 
-// handleRecordingDownload — GET /api/recordings/{name}. Имя валидируем строго:
-// только имя файла, без путей.
+// handleRecordingDownload — GET /api/recordings/{name}?room=. Имя валидируем
+// строго: только имя файла, без путей.
 func (a *App) handleRecordingDownload(w http.ResponseWriter, r *http.Request) {
+	room, ok := a.roomFromRequest(w, r)
+	if !ok {
+		return
+	}
 	name := r.PathValue("name")
 	if !recNameRe.MatchString(name) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "невалидное имя файла"})
 		return
 	}
-	path := filepath.Join(a.recordingsDir(), name)
+	path := filepath.Join(a.roomDir(room), name)
 	if _, err := os.Stat(path); err != nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "запись не найдена"})
 		return

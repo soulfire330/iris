@@ -25,7 +25,7 @@ export const DEFAULT_DSP: DSP = {
 // в проде — wss://<домен> (Caddy проксирует /rtc на LiveKit).
 const wsUrl = () => `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
 
-export function useRoom(token: string, dsp: DSP) {
+export function useRoom(token: string, roomName: string, dsp: DSP) {
   // Настройки DSP задаются при создании Room; смена настроек — новая комната и переподключение.
   const room = useMemo(
     () =>
@@ -158,7 +158,7 @@ export function useRoom(token: string, dsp: DSP) {
       const poll = async () => {
         tries++
         try {
-          const info = await fetchRoomInfo()
+          const info = await fetchRoomInfo(roomName)
           // Список людей в комнате — при каждом ответе, а не только при
           // первом: кто-то мог войти/выйти, пока мы ретраим пустую комнату.
           if (info.participants) setRoomInfo(info.participants)
@@ -179,7 +179,7 @@ export function useRoom(token: string, dsp: DSP) {
     // первый опрос запускаем сразу; onConnected/onJoined лишь повторяют его.
     const probe = async () => {
       try {
-        const info = await fetchRoomInfo()
+        const info = await fetchRoomInfo(roomName)
         if (info.participants) setRoomInfo(info.participants)
       } catch {
         // бэкенд ещё не ответил — догонит повторный опрос после коннекта
@@ -224,7 +224,7 @@ export function useRoom(token: string, dsp: DSP) {
       timers.current.forEach((t) => clearTimeout(t.t))
       room.disconnect()
     }
-  }, [room, token, setShowing])
+  }, [room, token, roomName, setShowing])
 
   return { room, remote, speakers, connected, state, error, startedAt, clockOffsetMs, roomInfo }
 }

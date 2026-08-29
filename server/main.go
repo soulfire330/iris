@@ -33,6 +33,7 @@ func main() {
 		publicKey: os.Getenv("PUBLIC_API_KEY"),
 		livekit:   livekitService(cfg.Server.LiveKit.Host, cfg.Server.LiveKit.APIKey, cfg.Server.LiveKit.APISecret),
 		egress:    egressService(cfg.Server.LiveKit.Host, cfg.Server.LiveKit.APIKey, cfg.Server.LiveKit.APISecret),
+		activeRec: map[string]string{},
 	}
 
 	mux := http.NewServeMux()
@@ -40,8 +41,10 @@ func main() {
 		w.Write([]byte("ok"))
 	})
 	mux.HandleFunc("POST /api/login", app.handleLogin)
+	// Список комнат публичен: селект на экране логина — до авторизации.
+	mux.HandleFunc("GET /api/rooms", app.handleRooms)
 	// Внутренний API — под LiveKit JWT (Bearer), см. requireToken. Публичные:
-	// login, healthz и аватары (картинки без заголовков).
+	// login, rooms, healthz и аватары (картинки без заголовков).
 	mux.HandleFunc("GET /api/room", app.requireToken(app.handleRoom))
 	mux.HandleFunc("GET /api/avatar/{login}", app.handleAvatar)
 	mux.HandleFunc("POST /api/recording/start", app.requireToken(app.handleRecordingStart))

@@ -33,9 +33,14 @@ func (a *App) publicAuth(next http.HandlerFunc) http.HandlerFunc {
 
 // handlePublicStatus — снимок для дашбордов: идёт ли встреча (комната
 // существует), сколько людей сейчас в комнате, идёт ли запись и заказана ли
-// сводка. Метаданные записи — тег в метаданных комнаты (recRoomMeta), как у
-// внутренних клиентов.
+// сводка. Комната — обязательный ?room= (проверка по конфигу; токена нет,
+// грант не сверяем). Метаданные записи — тег в метаданных комнаты
+// (recRoomMeta), как у внутренних клиентов.
 func (a *App) handlePublicStatus(w http.ResponseWriter, r *http.Request) {
+	room, ok := a.roomFromRequest(w, r)
+	if !ok {
+		return
+	}
 	ctx := r.Context()
 	out := struct {
 		RoomActive      bool   `json:"room_active"`
@@ -45,7 +50,7 @@ func (a *App) handlePublicStatus(w http.ResponseWriter, r *http.Request) {
 		SummaryOrdered  bool   `json:"summary_ordered,omitempty"`
 	}{}
 
-	resp, err := a.livekit.ListRooms(ctx, &livekit.ListRoomsRequest{Names: []string{a.cfg.Server.Room}})
+	resp, err := a.livekit.ListRooms(ctx, &livekit.ListRoomsRequest{Names: []string{room}})
 	if err != nil {
 		slog.Error("public status: livekit unavailable", "err", err)
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "livekit недоступен"})
@@ -64,7 +69,7 @@ func (a *App) handlePublicStatus(w http.ResponseWriter, r *http.Request) {
 		out.RecordingName = meta.RecName
 	}
 
-	plist, err := a.livekit.ListParticipants(ctx, &livekit.ListParticipantsRequest{Room: a.cfg.Server.Room})
+	plist, err := a.livekit.ListParticipants(ctx, &livekit.ListParticipantsRequest{Room: room})
 	if err != nil {
 		slog.Error("public status: participants unavailable", "err", err)
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "livekit недоступен"})

@@ -3,7 +3,11 @@
 Внешний доступ к записям и сводкам для скриптов, ботов и дашбордов. Внутренние
 эндпоинты (`/api/...`) не изменились, кроме авторизации: они требуют заголовок
 `Authorization: Bearer <LiveKit JWT>` (токен из ответа `/api/login`);
-публичными остаются `login`, `healthz` и аватары.
+публичными остаются `login`, `healthz`, `rooms` и аватары.
+
+Все эндпоинты с данными комнаты требуют обязательный параметр `?room=` (имя
+комнаты из конфига); публичный список комнат — `GET /api/rooms` (без ключа,
+порядок как в конфиге: `[{name, display}, ...]`).
 
 ## Авторизация
 
@@ -19,13 +23,16 @@ restart backend`.
 
 | Метод и путь | Что возвращает |
 |---|---|
-| `GET /api/public/recordings` | список записей со сводками, с фильтром по дате |
-| `GET /api/public/recordings/{name}` | mp4-файл записи (Content-Disposition: attachment) |
-| `GET /api/public/status` | снимок: комната, участники, запись, сводка |
+| `GET /api/public/recordings?room=` | список записей комнаты со сводками, с фильтром по дате |
+| `GET /api/public/recordings/{name}?room=` | mp4-файл записи (Content-Disposition: attachment) |
+| `GET /api/public/status?room=` | снимок: комната, участники, запись, сводка |
 
 ### Список записей
 
-`GET /api/public/recordings?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD`
+`GET /api/public/recordings?room=office&date_from=YYYY-MM-DD&date_to=YYYY-MM-DD`
+
+Комната обязательна: `room` вне конфига — `400`. Записи хранятся в подкаталоге
+комнаты (`recordings/<room>/`).
 
 Фильтр по дате звонка (`started_at`), обе границы опциональны:
 
@@ -68,12 +75,12 @@ restart backend`.
 
 ### Скачивание записи
 
-`GET /api/public/recordings/2025-06-11_14-30_ivanov.mp4` — mp4 в
+`GET /api/public/recordings/2025-06-11_14-30_ivanov.mp4?room=office` — mp4 в
 Content-Disposition. Несуществующее имя — `404`.
 
 ### Статус комнаты
 
-`GET /api/public/status`
+`GET /api/public/status?room=office`
 
 ```json
 {
@@ -98,7 +105,7 @@ Content-Disposition. Несуществующее имя — `404`.
 | Код | Когда |
 |---|---|
 | `404` | ключ не задан/неверный; запись не найдена |
-| `400` | невалидный `date_from`/`date_to` |
+| `400` | невалидный `date_from`/`date_to`; `room` вне конфига или отсутствует |
 | `502` | livekit недоступен |
 
 ## Примеры
@@ -106,15 +113,15 @@ Content-Disposition. Несуществующее имя — `404`.
 ```bash
 KEY=$(grep PUBLIC_API_KEY .env | cut -d= -f2)
 
-# Все записи
-curl -H "X-API-Key: $KEY" https://hub.example.com/api/public/recordings
+# Все записи комнаты office
+curl -H "X-API-Key: $KEY" "https://hub.example.com/api/public/recordings?room=office"
 
 # Записи за день
-curl -H "X-API-Key: $KEY" "https://hub.example.com/api/public/recordings?date_from=2025-06-11&date_to=2025-06-11"
+curl -H "X-API-Key: $KEY" "https://hub.example.com/api/public/recordings?room=office&date_from=2025-06-11&date_to=2025-06-11"
 
 # Скачать запись
-curl -H "X-API-Key: $KEY" -OJ https://hub.example.com/api/public/recordings/2025-06-11_14-30_ivanov.mp4
+curl -H "X-API-Key: $KEY" -OJ "https://hub.example.com/api/public/recordings/2025-06-11_14-30_ivanov.mp4?room=office"
 
 # Статус
-curl -H "X-API-Key: $KEY" https://hub.example.com/api/public/status
+curl -H "X-API-Key: $KEY" "https://hub.example.com/api/public/status?room=office"
 ```

@@ -20,16 +20,21 @@ func livekitService(host, apiKey, apiSecret string) *lksdk.RoomServiceClient {
 	return lksdk.NewRoomServiceClient(host, apiKey, apiSecret)
 }
 
-// handleRoom — общий таймер комнаты и снимок присутствующих. started_at_ms —
-// момент входа первого участника (creation_time комнаты в LiveKit: комната
-// живёт, пока в ней кто-то есть + empty_timeout, и исчезает, когда все
-// вышли). server_now_ms — часы сервера, по ним клиент выравнивает тик и не
-// зависит от часов машины. participants — люди в комнате сейчас (без
-// egress-бота записи): клиент рисует их плитки с лоадером, пока сам ещё
-// подключается. num_participants = len(participants).
+// handleRoom — общий таймер комнаты и снимок присутствующих. Комната —
+// обязательный ?room= (roomFromRequest: из конфига, для токена — совпадение с
+// грантом). started_at_ms — момент входа первого участника (creation_time
+// комнаты в LiveKit: комната живёт, пока в ней кто-то есть + empty_timeout, и
+// исчезает, когда все вышли). server_now_ms — часы сервера, по ним клиент
+// выравнивает тик и не зависит от часов машины. participants — люди в комнате
+// сейчас (без egress-бота записи): клиент рисует их плитки с лоадером, пока
+// сам ещё подключается. num_participants = len(participants).
 func (a *App) handleRoom(w http.ResponseWriter, r *http.Request) {
+	room, ok := a.roomFromRequest(w, r)
+	if !ok {
+		return
+	}
 	ctx := r.Context()
-	resp, err := a.livekit.ListRooms(ctx, &livekit.ListRoomsRequest{Names: []string{a.cfg.Server.Room}})
+	resp, err := a.livekit.ListRooms(ctx, &livekit.ListRoomsRequest{Names: []string{room}})
 	if err != nil {
 		slog.Error("room: livekit unavailable", "err", err)
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "livekit недоступен"})
@@ -51,7 +56,7 @@ func (a *App) handleRoom(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	plist, err := a.livekit.ListParticipants(ctx, &livekit.ListParticipantsRequest{Room: a.cfg.Server.Room})
+	plist, err := a.livekit.ListParticipants(ctx, &livekit.ListParticipantsRequest{Room: room})
 	if err != nil {
 		slog.Error("room: participants unavailable", "err", err)
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "livekit недоступен"})
@@ -76,6 +81,15 @@ func (a *App) handleRoom(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	out.NumParticipants = len(out.Participants)
+	writeJSON(w, http.StatusOK, out)
+}
+
+// handleRooms — публичный список комнат для экрана логина (до авторизации):
+// порядок — как в конфиге, display — подпись в селекте. Секретов нет — имя
+// комнаты и так видно в конфиге LiveKit.
+func (a *App) handleRooms(w http.ResponseWriter, r *http.Request) {
+	out := make([]RoomCfg, len(a.cfg.Rooms))
+	copy(out, a.cfg.Rooms)
 	writeJSON(w, http.StatusOK, out)
 }
 
