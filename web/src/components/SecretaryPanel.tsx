@@ -1,22 +1,30 @@
-import { CaretDown, CaretUp, ChatTeardropText, DownloadSimple, FileText, PaperPlaneRight, Sparkle } from '@phosphor-icons/react'
-import ReactMarkdown from 'react-markdown'
-import { useEffect, useRef, useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { formatRecDay } from '@/lib/format'
-import type { ChatMessage } from '@/lib/chat'
-import type { RecordingFile } from '@/lib/api'
-import { cn } from '@/lib/utils'
+import {
+  CaretDown,
+  CaretUp,
+  ChatTeardropText,
+  DownloadSimple,
+  FileText,
+  PaperPlaneRight,
+  Sparkle,
+} from "@phosphor-icons/react";
+import ReactMarkdown from "react-markdown";
+import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { formatRecDay } from "@/lib/format";
+import type { ChatMessage } from "@/lib/chat";
+import type { RecordingFile } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
-export type PanelTab = 'summaries' | 'chat'
+export type PanelTab = "summaries" | "chat";
 
 // Остановленная запись, пока egress дописывает файл: строка «Сейчас» живёт
 // с лоадером до появления файла в списке (сопоставление по name).
 export interface SavingRecording {
-  name: string
-  startedAt: Date
-  elapsedMs: number
-  ai: boolean
+  name: string;
+  startedAt: Date;
+  elapsedMs: number;
+  ai: boolean;
 }
 
 // Правая колонка секретаря. Сводки придут с эпиком AI-секретаря; чат — живой,
@@ -40,127 +48,121 @@ export function SecretaryPanel({
   summariesBlocked,
   onAllSummaries,
 }: {
-  tab: PanelTab
-  onTabChange: (t: PanelTab) => void
-  messages: ChatMessage[]
-  unread: number
-  connected: boolean
-  onSend: (text: string) => void
-  recordings: RecordingFile[]
-  recording: boolean
+  tab: PanelTab;
+  onTabChange: (t: PanelTab) => void;
+  messages: ChatMessage[];
+  unread: number;
+  connected: boolean;
+  onSend: (text: string) => void;
+  recordings: RecordingFile[];
+  recording: boolean;
   // Комната: записи и их скачивание параметризуются ею (?room=).
-  room: string
+  room: string;
   // Живая запись — её строка вверху «Прошлых встреч»: время старта записи,
   // её длительность, участники; aiSummary — заказана ли сводка («появится
   // после звонка»).
-  aiSummary: boolean
-  recStartedAt: Date | null
-  recElapsedMs: number
+  aiSummary: boolean;
+  recStartedAt: Date | null;
+  recElapsedMs: number;
   // Остановленная запись в процессе сохранения (спиннер вместо точки записи).
-  saving: SavingRecording | null
-  participantCount: number
+  saving: SavingRecording | null;
+  participantCount: number;
   // «Все сводки»: раскладка живёт в RoomPage, кнопка — тумблер. Пока идёт
   // демонстрация экрана, сводки не открыть (демонстрация приоритетнее).
-  summariesOpen: boolean
-  summariesBlocked: boolean
-  onAllSummaries: () => void
+  summariesOpen: boolean;
+  summariesBlocked: boolean;
+  onAllSummaries: () => void;
 }) {
-  const [draft, setDraft] = useState('')
+  const [draft, setDraft] = useState("");
   // Обводка фокуса — только для клавиатуры: текстовый инпут всегда
   // :focus-visible, поэтому клик мыши гасит кольцо, Tab — возвращает.
-  const [keyboardFocus, setKeyboardFocus] = useState(false)
-  const listRef = useRef<HTMLDivElement>(null)
+  const [keyboardFocus, setKeyboardFocus] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
   // Автопрокрутка: вниз за новыми сообщениями, только пока читатель внизу —
   // не выдёргивать его из истории.
-  const atBottom = useRef(true)
+  const atBottom = useRef(true);
 
   useEffect(() => {
-    const el = listRef.current
-    if (el && atBottom.current) el.scrollTop = el.scrollHeight
-  }, [messages])
+    const el = listRef.current;
+    if (el && atBottom.current) el.scrollTop = el.scrollHeight;
+  }, [messages]);
 
   // Открыли таб — вниз, к непрочитанному.
   useEffect(() => {
-    if (tab === 'chat') {
-      const el = listRef.current
-      if (el) el.scrollTop = el.scrollHeight
+    if (tab === "chat") {
+      const el = listRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
     }
-  }, [tab])
+  }, [tab]);
 
   const submit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const text = draft.trim()
-    if (!text || !connected) return
-    onSend(text)
-    setDraft('')
-    const el = listRef.current
-    if (el) el.scrollTop = el.scrollHeight
-  }
+    e.preventDefault();
+    const text = draft.trim();
+    if (!text || !connected) return;
+    onSend(text);
+    setDraft("");
+    const el = listRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  };
 
   const formatTime = (ts: number) =>
-    new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+    new Date(ts).toLocaleTimeString("ru-RU", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
   // «54 мин · 6» — длительность и число участников; чего нет — пропускаем.
   const recMetaLine = (r: RecordingFile) => {
-    const parts: string[] = []
+    const parts: string[] = [];
     if (r.stopped_at) {
       const min = Math.max(
         1,
         Math.round((new Date(r.stopped_at).getTime() - new Date(r.started_at).getTime()) / 60_000),
-      )
-      parts.push(`${min} мин`)
+      );
+      parts.push(`${min} мин`);
     }
-    if ((r.participants?.length ?? 0) > 0) parts.push(String(r.participants.length))
-    return parts.join(' · ')
-  }
+    if ((r.participants?.length ?? 0) > 0) parts.push(String(r.participants.length));
+    return parts.join(" · ");
+  };
 
   // Строка сохранения видна, пока файл не появился в списке. Вычисляем в
   // рендере, а не эффектом: иначе на один кадр «Сейчас» и «Сегодня» видны
   // вместе, потом строка исчезает и список дёргается вверх.
-  const savingVisible = saving != null && !recordings.some((r) => r.name === saving.name)
+  const savingVisible = saving != null && !recordings.some((r) => r.name === saving.name);
 
   return (
     <aside className="flex h-full min-h-0 w-[300px] flex-col border-l border-border bg-card">
       <div className="flex flex-none border-b border-border">
-        <TabButton active={tab === 'summaries'} onClick={() => onTabChange('summaries')}>
-          <Sparkle className="h-[13px] w-[13px] text-ai" />
+        <TabButton active={tab === "summaries"} onClick={() => onTabChange("summaries")}>
+          <Sparkle className="size-13px text-ai" />
           <span>Сводки</span>
         </TabButton>
-        <TabButton active={tab === 'chat'} onClick={() => onTabChange('chat')}>
-          <ChatTeardropText className="h-[13px] w-[13px]" />
+        <TabButton active={tab === "chat"} onClick={() => onTabChange("chat")}>
+          <ChatTeardropText className="size-13px" />
           <span>Чат</span>
           {unread > 0 && (
-            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-accent-200 px-1 font-mono text-[9px] leading-none text-accent-800">
-              {unread > 99 ? '99+' : unread}
+            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-accent-200 px-1 font-mono text-xs leading-none text-accent-800">
+              {unread > 99 ? "99+" : unread}
             </span>
           )}
         </TabButton>
       </div>
 
-      <div
-        className={cn(
-          'flex min-h-0 flex-1 flex-col gap-6 p-4',
-          tab === 'summaries' && 'overflow-y-auto',
-        )}
-      >
-        {tab === 'summaries' ? (
+      <div className={cn("flex min-h-0 flex-1 flex-col gap-6 p-4", tab === "summaries" && "overflow-y-auto")}>
+        {tab === "summaries" ? (
           <>
             <div className="flex flex-col gap-2">
-              <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-neutral-600">
-                Прошлые встречи
-              </span>
+              <span className="font-mono text-xs tracking-[0.1em] text-neutral-600 uppercase">Прошлые встречи</span>
               {/* Живая запись — включение в историю на самом верху: «Сейчас,
                   время старта / таймер», участники и красная точка. В список
                   прошлых не попадает, пока egress пишет файл. */}
               {recording && recStartedAt && (
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="truncate text-[12px] font-medium">
-                      Сейчас, {formatTime(recStartedAt.getTime())}
-                    </span>
+                    <span className="truncate text-xs font-medium">Сейчас, {formatTime(recStartedAt.getTime())}</span>
                     <div className="flex flex-none items-center gap-2.5">
                       {/* Длительность записи · участники — как у прошлых встреч. */}
-                      <span className="font-mono text-[10px] text-neutral-500">
+                      <span className="font-mono text-xs text-neutral-500">
                         {Math.floor(recElapsedMs / 60_000)} мин · {participantCount}
                       </span>
                       {/* Красная точка — на месте кнопки скачивания у прошлых
@@ -171,12 +173,7 @@ export function SecretaryPanel({
                     </div>
                   </div>
                   {aiSummary && (
-                    <SummaryBlock
-                      status=""
-                      error=""
-                      text=""
-                      waitingText="AI-сводка появится после звонка."
-                    />
+                    <SummaryBlock status="" error="" text="" waitingText="AI-сводка появится после звонка." />
                   )}
                 </div>
               )}
@@ -186,11 +183,11 @@ export function SecretaryPanel({
               {savingVisible && saving && (
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="truncate text-[12px] font-medium">
+                    <span className="truncate text-xs font-medium">
                       Сейчас, {formatTime(saving.startedAt.getTime())}
                     </span>
                     <div className="flex flex-none items-center gap-2.5">
-                      <span className="font-mono text-[10px] text-neutral-500">
+                      <span className="font-mono text-xs text-neutral-500">
                         {Math.floor(saving.elapsedMs / 60_000)} мин · {participantCount}
                       </span>
                       <span className="flex h-7 w-7 flex-none items-center justify-center">
@@ -199,20 +196,13 @@ export function SecretaryPanel({
                     </div>
                   </div>
                   {saving.ai && (
-                    <SummaryBlock
-                      status=""
-                      error=""
-                      text=""
-                      waitingText="AI-сводка появится после звонка."
-                    />
+                    <SummaryBlock status="" error="" text="" waitingText="AI-сводка появится после звонка." />
                   )}
                 </div>
               )}
               {recordings.length === 0 ? (
-                <p className="text-[12px] leading-relaxed text-neutral-500">
-                  {recording
-                    ? 'Записей пока нет.'
-                    : 'Записей пока нет — нажмите кнопку записи в панели звонка.'}
+                <p className="text-xs leading-relaxed text-neutral-500">
+                  {recording ? "Записей пока нет." : "Записей пока нет — нажмите кнопку записи в панели звонка."}
                 </p>
               ) : (
                 <>
@@ -221,14 +211,10 @@ export function SecretaryPanel({
                       {/* Запись — не карточка: строка списка. Дата слева, справа —
                           длительность · участники и скачивание. */}
                       <div className="flex items-center justify-between gap-2">
-                        <span className="truncate text-[12px] font-medium">
-                          {formatRecDay(r.started_at)}
-                        </span>
+                        <span className="truncate text-xs font-medium">{formatRecDay(r.started_at)}</span>
                         <div className="flex flex-none items-center gap-2.5">
                           {recMetaLine(r) && (
-                            <span className="font-mono text-[10px] text-neutral-500">
-                              {recMetaLine(r)}
-                            </span>
+                            <span className="font-mono text-xs text-neutral-500">{recMetaLine(r)}</span>
                           )}
                           <a
                             href={`/api/recordings/${encodeURIComponent(r.name)}?room=${encodeURIComponent(room)}`}
@@ -242,26 +228,24 @@ export function SecretaryPanel({
                       </div>
                       {/* AI-сводка: статус и текст пишет воркер-секретарь в
                           {имя}.summary.json, бэкенд отдаёт в списке. */}
-                      {r.summary && (
-                        <SummaryBlock status={r.ai_status} error={r.ai_error} text={r.summary_text} />
-                      )}
+                      {r.summary && <SummaryBlock status={r.ai_status} error={r.ai_error} text={r.summary_text} />}
                     </div>
                   ))}
                 </>
               )}
             </div>
-            <p className="text-[12px] leading-relaxed text-neutral-500">
-              Кнопка AI в панели звонка — при идущей записи — закажет сводку: секретарь
-              распознает речь и пришлёт краткий пересказ сюда. Обычная запись — только аудиофайл.
+            <p className="text-xs leading-relaxed text-neutral-500">
+              Кнопка AI в панели звонка — при идущей записи — закажет сводку: секретарь распознает речь и пришлёт
+              краткий пересказ сюда. Обычная запись — только аудиофайл.
             </p>
             <Button
               variant="ghost"
               onClick={onAllSummaries}
               disabled={summariesBlocked}
-              title={summariesBlocked ? 'Недоступно, пока идёт демонстрация экрана' : undefined}
-              className={cn('mt-auto w-full gap-2 text-[12px]', summariesOpen && 'bg-primary/10 text-ai-300')}
+              title={summariesBlocked ? "Недоступно, пока идёт демонстрация экрана" : undefined}
+              className={cn("mt-auto w-full gap-2 text-xs", summariesOpen && "bg-primary/10 text-ai-300")}
             >
-              <FileText className="h-[14px] w-[14px]" />
+              <FileText className="size-14px" />
               <span>Все сводки</span>
             </Button>
           </>
@@ -269,25 +253,21 @@ export function SecretaryPanel({
           <div
             ref={listRef}
             onScroll={() => {
-              const el = listRef.current
-              if (el) atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40
+              const el = listRef.current;
+              if (el) atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
             }}
             className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto"
           >
             {messages.length === 0 && (
-              <p className="text-[12px] leading-relaxed text-neutral-500">
-                Сообщений пока нет — напишите первым.
-              </p>
+              <p className="text-xs leading-relaxed text-neutral-500">Сообщений пока нет — напишите первым.</p>
             )}
             {messages.map((m) => (
               <div key={m.id} className="flex flex-col gap-0.5">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-[12px] font-medium text-foreground">{m.name}</span>
-                  <span className="font-mono text-[10px] text-neutral-600">{formatTime(m.ts)}</span>
+                  <span className="text-xs font-medium text-foreground">{m.name}</span>
+                  <span className="font-mono text-xs text-neutral-600">{formatTime(m.ts)}</span>
                 </div>
-                <p className="whitespace-pre-wrap break-words text-[12px] leading-relaxed text-neutral-300">
-                  {m.text}
-                </p>
+                <p className="text-xs leading-relaxed break-words whitespace-pre-wrap text-neutral-300">{m.text}</p>
               </div>
             ))}
           </div>
@@ -296,7 +276,7 @@ export function SecretaryPanel({
 
       {/* Футер чата: геометрия повторяет панель звонка слева (p-3 + h-9,
           снизу 24px), поэтому разделитель ложится вровень с её верхом. */}
-      {tab === 'chat' && (
+      {tab === "chat" && (
         <div className="flex flex-none flex-col border-t border-border pb-6">
           <form onSubmit={submit} className="flex flex-none items-center gap-2 px-4 py-3">
             <Input
@@ -304,13 +284,13 @@ export function SecretaryPanel({
               onChange={(e) => setDraft(e.target.value)}
               onPointerDown={() => setKeyboardFocus(false)}
               onKeyDown={(e) => {
-                if (e.key === 'Tab') setKeyboardFocus(true)
+                if (e.key === "Tab") setKeyboardFocus(true);
               }}
               disabled={!connected}
-              placeholder={connected ? 'Сообщение…' : 'Нет соединения'}
+              placeholder={connected ? "Сообщение…" : "Нет соединения"}
               className={cn(
-                'h-9 min-w-0 flex-1 border-transparent bg-transparent px-0 text-[13px]',
-                !keyboardFocus && 'focus-visible:outline-none',
+                "h-9 min-w-0 flex-1 border-transparent bg-transparent px-0 text-sm",
+                !keyboardFocus && "focus-visible:outline-none",
               )}
             />
             <Button
@@ -327,7 +307,7 @@ export function SecretaryPanel({
         </div>
       )}
     </aside>
-  )
+  );
 }
 
 // Сводка AI: вертикальная AI-полоса слева определяет блок; заголовок с иконкой,
@@ -339,31 +319,31 @@ export function SummaryBlock({
   error,
   text,
   large = false,
-  waitingText = 'Готовится…',
+  waitingText = "Готовится…",
 }: {
-  status: string
-  error: string
-  text: string
-  large?: boolean
+  status: string;
+  error: string;
+  text: string;
+  large?: boolean;
   // Что писать вместо «готовится…», когда статус ещё не done (живая запись).
-  waitingText?: string
+  waitingText?: string;
 }) {
-  const [open, setOpen] = useState(large)
-  const bar = <div className="w-px flex-none self-stretch bg-ai" aria-hidden />
+  const [open, setOpen] = useState(large);
+  const bar = <div className="w-px flex-none self-stretch bg-ai" aria-hidden />;
   const title = (
-    <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-ai-300">
+    <span className="flex items-center gap-1.5 font-mono text-xs tracking-label text-ai-300 uppercase">
       <Sparkle className="h-3 w-3" />
       <span>Сводка</span>
     </span>
-  )
-  if (status !== 'done') {
+  );
+  if (status !== "done") {
     return (
       <div className="flex gap-2.5">
         {bar}
         <div className="min-w-0 flex-1">
           {title}
-          <div className={cn('mt-1 leading-relaxed', large ? 'text-[13px]' : 'text-[11px]')}>
-            {status === 'error' ? (
+          <div className={cn("mt-1 leading-relaxed", large ? "text-sm" : "text-xs")}>
+            {status === "error" ? (
               <span className="text-warn">не удалась: {error}</span>
             ) : (
               <span className="animate-breathe text-neutral-500">{waitingText}</span>
@@ -371,7 +351,7 @@ export function SummaryBlock({
           </div>
         </div>
       </div>
-    )
+    );
   }
   return (
     <div className="flex gap-2.5">
@@ -379,47 +359,37 @@ export function SummaryBlock({
       <div className="min-w-0 flex-1">
         <button
           onClick={() => setOpen(!open)}
-          className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-ai-300 transition-colors hover:text-ai-400"
+          className="flex items-center gap-1.5 font-mono text-xs tracking-label text-ai-300 uppercase transition-colors hover:text-ai-400"
           aria-expanded={open}
         >
           <Sparkle className="h-3 w-3" />
           <span>Сводка</span>
           {open ? <CaretUp className="h-3 w-3" /> : <CaretDown className="h-3 w-3" />}
         </button>
-        <div className={cn('mt-1', !open && 'line-clamp-2')}>
+        <div className={cn("mt-1", !open && "line-clamp-2")}>
           {text ? (
             <div className="md-body" style={large ? { fontSize: 14 } : undefined}>
               <ReactMarkdown>{text}</ReactMarkdown>
             </div>
           ) : (
-            <p className="text-[11px] text-neutral-500">Сводка пуста — в записи не было речи.</p>
+            <p className="text-xs text-neutral-500">Сводка пуста — в записи не было речи.</p>
           )}
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-}) {
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       onClick={onClick}
       className={cn(
-        'flex flex-1 items-center justify-center gap-2 border-b py-3 text-[12px] transition-colors',
-        active
-          ? 'border-ai font-medium text-foreground'
-          : 'border-transparent text-neutral-500 hover:text-neutral-300',
+        "flex flex-1 items-center justify-center gap-2 border-b py-3 text-xs transition-colors",
+        active ? "border-ai font-medium text-foreground" : "border-transparent text-neutral-500 hover:text-neutral-300",
       )}
     >
       {children}
     </button>
-  )
+  );
 }

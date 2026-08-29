@@ -26,7 +26,6 @@
 
   /* Рампы (OKLCH, общая шкала светлоты) — тема инвариантна */
   --neutral-100: #f3f5fe;
-  --neutral-200: #e4e7f5;
   --neutral-300: #cfd3e5;
   --neutral-400: #b2b6ca;
   --neutral-500: #9397ab;
@@ -35,25 +34,14 @@
   --neutral-800: #3f424d;
   --neutral-900: #292b31;
 
-  --accent-100: #f5f4ff;
   --accent-200: #e7e5fe;
   --accent-300: #d2cefd;
-  --accent-400: #b5abfc;
-  --accent-500: #968ae0;
-  --accent-600: #796cbf;
   --accent-700: #5d5294;
   --accent-800: #423a6a;
-  --accent-900: #2b2741;
 
-  --ai-100: oklch(0.93 0.03 195);
-  --ai-200: oklch(0.87 0.05 195);
   --ai-300: oklch(0.8 0.08 195);
   --ai-400: oklch(0.76 0.09 195);
   --ai-500: oklch(0.72 0.1 195);
-  --ai-600: oklch(0.62 0.09 195);
-  --ai-700: oklch(0.5 0.08 195);
-  --ai-800: oklch(0.38 0.06 195);
-  --ai-900: oklch(0.28 0.04 195);
 }
 
 .dark {
@@ -85,8 +73,6 @@
   --recording: oklch(0.62 0.16 25);
 
   --shadow-sm: 0 0 0 1px #3f424d;
-  --shadow-md: 0 0 0 1px #595d6c, 0 6px 18px rgb(0 0 0 / 0.55);
-  --shadow-lg: 0 0 0 1px #9397ab, 0 16px 40px rgb(0 0 0 / 0.65);
 }
 
 .light {
@@ -120,8 +106,6 @@
   --danger-300: oklch(0.73 0.13 25);
 
   --shadow-sm: 0 0 0 1px #cfd3e5;
-  --shadow-md: 0 0 0 1px #b2b6ca, 0 6px 18px rgb(22 24 38 / 0.12);
-  --shadow-lg: 0 0 0 1px #9397ab, 0 16px 40px rgb(22 24 38 / 0.18);
 }
 
 @theme inline {
@@ -154,7 +138,6 @@
   --color-recording: var(--recording);
 
   --color-neutral-100: var(--neutral-100);
-  --color-neutral-200: var(--neutral-200);
   --color-neutral-300: var(--neutral-300);
   --color-neutral-400: var(--neutral-400);
   --color-neutral-500: var(--neutral-500);
@@ -163,60 +146,70 @@
   --color-neutral-800: var(--neutral-800);
   --color-neutral-900: var(--neutral-900);
 
-  --color-accent-100: var(--accent-100);
   --color-accent-200: var(--accent-200);
   --color-accent-300: var(--accent-300);
-  --color-accent-400: var(--accent-400);
-  --color-accent-500: var(--accent-500);
-  --color-accent-600: var(--accent-600);
   --color-accent-700: var(--accent-700);
   --color-accent-800: var(--accent-800);
-  --color-accent-900: var(--accent-900);
 
-  --color-ai-100: var(--ai-100);
-  --color-ai-200: var(--ai-200);
   --color-ai-300: var(--ai-300);
   --color-ai-400: var(--ai-400);
   --color-ai-500: var(--ai-500);
-  --color-ai-600: var(--ai-600);
-  --color-ai-700: var(--ai-700);
-  --color-ai-800: var(--ai-800);
-  --color-ai-900: var(--ai-900);
 
   --color-danger-300: var(--danger-300);
 
   --shadow-sm: var(--shadow-sm);
-  --shadow-md: var(--shadow-md);
-  --shadow-lg: var(--shadow-lg);
 
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
   --radius-lg: var(--radius-lg);
 
-  /* Экран входа: размеры по спецификации (10/11/12/13/15/21px). */
-  --text-9: 9px;
-  --text-10: 10px;
-  --text-11: 11px;
-  --text-12: 12px;
-  --text-13: 13px;
-  --text-15: 15px;
-  --text-21: 21px;
-
+  /* Экран входа: размеры по спецификации. */
   --width-login: 380px;
 
+  /* Иконки и аватары: фиксированные пиксельные размеры (w-13px нельзя: коллизия со шкалой spacing). */
+  --size-10px: 10px;
+  --size-13px: 13px;
+  --size-14px: 14px;
+  --size-28px: 28px;
+
   --tracking-mono: 0.06em;
+  --tracking-label: 0.08em; /* капс-лейблы статусов */
   --tracking-title: -0.01em;
+
+  /* Плейсхолдер участника на сцене (staged). */
+  --color-staged: #6b7280;
+
+  /* Кольцо говорящего: 1px обводка + 5px ореол (#2b2741 — бывший accent-900). */
+  --shadow-speaking: 0 0 0 1px var(--speaking), 0 0 0 5px #2b2741;
+
+  /* Штриховка-плейсхолдер аватара без фото. */
+  --background-image-stripes: repeating-linear-gradient(
+    135deg,
+    var(--color-neutral-800) 0 6px,
+    var(--color-neutral-900) 6px 12px
+  );
 
   --animate-rec: rec 1.8s ease-in-out infinite;
   --animate-breathe: breathe 2.6s ease-in-out infinite;
 }
+
 @keyframes rec {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 @keyframes breathe {
-  0%, 100% { opacity: 0.85; }
-  50% { opacity: 0.45; }
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 0.45;
+  }
 }
 
 @layer base {
@@ -233,7 +226,12 @@
   button:not(:disabled) {
     cursor: pointer;
   }
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-weight: 500;
   }
   ::selection {

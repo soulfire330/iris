@@ -27,3 +27,13 @@ _Avoid_: саммари, протокол
 **Секретарь** (Secretary):
 Воркер AI-сводок (`server/cmd/secretary`): распознаёт речь записи (STT) и составляет Сводку (LLM); настройка — `.env`.
 _Avoid_: AI-воркер, бот
+
+## Frontend: Tailwind CSS (web/)
+
+- Классы сортирует `prettier-plugin-tailwindcss` (prettier — dev-зависимость, формат через `bunx prettier --write src/`).
+- Динамические классы — только через `cn()` (`src/lib/utils.ts`, clsx + tailwind-merge). Никаких `px-4 ${isActive ? ... }`.
+- Произвольные значения `[...]`: не чаще 1–2 использований. Повторы — токен в `@theme inline` в `src/index.css` (`--size-*`, `--text-*`, `--shadow-*`, `--tracking-*`, `--background-image-*`). Сложные расчёты (cqw, clamp) допустимы: см. `avatarSize` в ParticipantTile.
+- Mobile-first: только `sm:`/`md:`/`lg:`/`xl:`/`2xl:` (min-width). `max-*` — запрещено, в коде их нет.
+- Шорткаты: `size-*` вместо пар `w-* h-*`, `inset-0`, `aspect-video`.
+- Элемент зависит от родителя — `@container` + cqw; от экрана — viewport-префиксы. Не смешивать в одном элементе.
+- Повторяющиеся блоки из 3+ мест — компонент, а не `@apply` (исключение — базовые стили тегов в `@layer base`).
