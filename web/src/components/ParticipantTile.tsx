@@ -54,7 +54,7 @@ export function ParticipantTile({
     <div
       style={width ? { width: `${width}px` } : undefined}
       className={cn(
-        'group relative aspect-[16/9] w-full max-w-[50cqw] overflow-hidden rounded-md bg-card shadow-sm max-sm:aspect-[4/5] max-sm:w-[calc(50%-6px)] max-sm:only:w-full max-sm:max-w-full @container',
+        'group relative aspect-[16/9] w-full max-w-[50cqw] overflow-hidden rounded-md bg-card shadow-sm max-sm:max-w-full @container',
         hasVideo ? 'bg-muted' : 'flex flex-col items-center justify-center gap-2 p-3',
         speaking && 'shadow-[0_0_0_1px_var(--speaking),0_0_0_5px_var(--accent-900)]',
       )}

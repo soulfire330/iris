@@ -330,8 +330,11 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
   const gridRef = useRef<HTMLDivElement>(null)
   // Ширина плитки, посчитанная подбором; передаётся каждой плитке напрямую.
   const [fitTileW, setFitTileW] = useState(0)
+  // Участников так много, что плитки ужались до минимума — включаем скролл.
+  const [tileOverflow, setTileOverflow] = useState(false)
   // Считаем в layout-эффекте синхронно (до отрисовки), чтобы плитки не
-  // рендерились на миг во всю ширину; RO — на ресайзы поля.
+  // рендерились на миг во всю ширину; RO — на ресайзы поля. layout в deps:
+  // при переключении раскладок сетка перемонтируется, подбор пересчитывается.
   useLayoutEffect(() => {
     const el = gridRef.current
     if (!el) return
@@ -340,44 +343,49 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
       const gap = 12 // gap-3
       const { width: w, height: h } = el.getBoundingClientRect()
       if (w <= 0 || h <= 0) return
-      // На телефоне ширина — чистый CSS (2 колонки, одному — вся ширина).
+      if (n <= 1) {
+        // Капы CSS: на телефоне max-w-full + only:w-full, на остальных — 50cqw.
+        setFitTileW(0)
+        setTileOverflow(false)
+        return
+      }
+      // Телефон: одна колонка через CSS; скролл — только если ряды 16:9
+      // не влезают по высоте.
       if (matchMedia('(max-width: 40rem)').matches) {
         setFitTileW(0)
+        const rows = n
+        const needH = rows * w * (9 / 16) + (rows - 1) * gap
+        setTileOverflow(needH > h)
         return
       }
-      if (n <= 1) {
-        setFitTileW(0) // капы CSS: max-w-[50cqw], на телефоне max-w-full
-        return
-      }
-      // На телефоне плитки-карточки 4:5, на остальных — 16:9.
-      const ar = matchMedia('(max-width: 40rem)').matches ? 5 / 4 : 9 / 16
+      // Плитки 16:9 на десктопе/планшете.
+      const ar = 9 / 16
+      // Минимум высоты плитки 160px (ширина = 160 × AR): мельче не сжимаем,
+      // дальше — скролл.
+      const minW = 160 / ar
       let bestW = 0
       for (let k = 1; k <= n; k++) {
         const rows = Math.ceil(n / k)
-        const tileW = (w - (k - 1) * gap) / k
-        const needH = rows * tileW * ar + (rows - 1) * gap
-        if (tileW > bestW && needH <= h) bestW = tileW
+        const colW = (w - (k - 1) * gap) / k
+        // Не шире, чем позволяет высота ряда: плитки ужимаются и всегда
+        // помещаются в поле (фит вместо переполнения и скролла).
+        const tileW = Math.min(colW, ((h - (rows - 1) * gap) / rows) / ar)
+        if (tileW > bestW) bestW = tileW
       }
-      // Ни один вариант не влез по высоте — минимальное переполнение.
-      if (bestW === 0) {
-        let minNeed = Infinity
-        for (let k = 1; k <= n; k++) {
-          const rows = Math.ceil(n / k)
-          const tileW = (w - (k - 1) * gap) / k
-          const needH = rows * tileW * ar + (rows - 1) * gap
-          if (needH < minNeed) {
-            minNeed = needH
-            bestW = tileW
-          }
-        }
+      if (bestW < minW) {
+        // Участников слишком много: минимальная плитка, остальное — скроллом.
+        setFitTileW(minW)
+        setTileOverflow(true)
+      } else {
+        setFitTileW(bestW)
+        setTileOverflow(false)
       }
-      setFitTileW(bestW)
     }
     compute()
     const ro = new ResizeObserver(compute)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [tileCount])
+  }, [tileCount, layout])
 
   // Выключение = unpublishTrack: LiveKit mute() оставляет устройство живым
   // (индикатор микрофона в браузере не гаснет), а unpublish останавливает источник.
@@ -520,7 +528,10 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
           <div className="flex min-h-0 min-w-0 flex-col gap-4 p-6">
             <div
               ref={gridRef}
-              className="flex min-h-0 flex-1 flex-wrap content-start justify-center gap-3 overflow-y-auto p-1.5 @container"
+              className={cn(
+                'flex min-h-0 flex-1 flex-wrap content-center justify-center gap-3 @container',
+                tileOverflow && 'content-start overflow-y-auto p-1.5',
+              )}
             >
               {/* Плитка-заглушка себя, пока комната подключается. */}
               {!connected && !error && (
