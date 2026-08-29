@@ -183,8 +183,9 @@ func (a *App) handleRecordingStart(w http.ResponseWriter, r *http.Request) {
 	// попадает позже — из handleRecordingSummary.
 	a.activeRec[room] = name
 	if b, err := json.Marshal(recMeta{
-		StartedBy: req.Login,
-		StartedAt: time.Unix(0, info.StartedAt).Format(time.RFC3339), // StartedAt — наносекунды
+		StartedBy:    req.Login,
+		StartedAt:    time.Unix(0, info.StartedAt).Format(time.RFC3339), // StartedAt — наносекунды
+		Participants: []string{},
 	}); err == nil {
 		if err := os.WriteFile(filepath.Join(dir, strings.TrimSuffix(name, ".mp4")+".json"), b, 0o644); err != nil {
 			slog.Error("recording: sidecar write failed", "name", name, "err", err)

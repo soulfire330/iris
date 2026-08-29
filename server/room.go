@@ -46,7 +46,7 @@ func (a *App) handleRoom(w http.ResponseWriter, r *http.Request) {
 		ServerNowMs     int64             `json:"server_now_ms"`
 		NumParticipants int               `json:"num_participants"`
 		Participants    []roomParticipant `json:"participants"`
-	}{ServerNowMs: time.Now().UnixMilli()}
+	}{ServerNowMs: time.Now().UnixMilli(), Participants: []roomParticipant{}}
 
 	// 0 — комната пуста: клиент пока держит локальный якорь и переспрашивает.
 	if len(resp.Rooms) > 0 {
@@ -94,7 +94,7 @@ func (a *App) handleRooms(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	out := make([]roomState, 0, len(a.cfg.Rooms))
 	for _, rc := range a.cfg.Rooms {
-		st := roomState{Name: rc.Name, Display: rc.Display}
+		st := roomState{Name: rc.Name, Display: rc.Display, Participants: []roomStateParticipant{}}
 		plist, err := a.livekit.ListParticipants(ctx, &livekit.ListParticipantsRequest{Room: rc.Name})
 		if err != nil {
 			slog.Error("rooms: livekit unavailable", "room", rc.Name, "err", err)
