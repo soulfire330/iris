@@ -88,14 +88,15 @@ export function CallBar(p: CallBarProps) {
             <span>{p.onClosePanel ? 'Закрыть' : 'Сводки и чат'}</span>
           </Button>
         )}
-        <span className="font-mono text-[10px] text-neutral-600">docker · self-hosted</span>
+        <span className="font-mono text-[10px] text-neutral-600 max-sm:hidden">docker · self-hosted</span>
         <Button
           onClick={p.onLeave}
           variant="ghost"
+          aria-label="Выйти"
           className="gap-2 border-destructive/60 text-[oklch(0.8_0.12_25)] hover:bg-[color-mix(in_oklch,var(--foreground)_7%,transparent)] hover:text-[oklch(0.8_0.12_25)]"
         >
           <SignOut />
-          <span>Выйти</span>
+          <span className="max-sm:hidden">Выйти</span>
         </Button>
       </div>
     </div>

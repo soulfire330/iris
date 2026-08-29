@@ -396,16 +396,6 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
     />
   )
 
-  const panelToggle = (
-    <Button
-      variant="ghost"
-      className="gap-2 text-[12px] min-[1181px]:hidden"
-      onClick={() => setPanelOpen(true)}
-    >
-      Сводки и чат
-    </Button>
-  )
-
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
       <RoomHeader
@@ -415,6 +405,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
         secretary={aiSummary}
         connState={state}
         backendOnline={backendOnline}
+        onOpenPanel={() => setPanelOpen(true)}
         screenLabel={
           // Тег в шапке: «Экран», если кто-то демонстрирует (независимо от того,
           // чей поток на крупном плане); иначе — развёрнутая камера.
@@ -435,8 +426,8 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
         className={cn(
           'grid min-h-0 flex-1 [grid-template-rows:minmax(0,1fr)]',
           layout === 'stage' || layout === 'summaries'
-            ? '[grid-template-columns:1fr_208px_300px] max-[900px]:[grid-template-columns:1fr]'
-            : '[grid-template-columns:1fr_300px] max-[1180px]:[grid-template-columns:1fr]',
+            ? '[grid-template-columns:1fr_208px_300px] max-lg:[grid-template-columns:1fr]'
+            : '[grid-template-columns:1fr_300px] max-lg:[grid-template-columns:1fr]',
         )}
       >
         {layout === 'summaries' ? (
@@ -475,7 +466,9 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
               className={cn(
                 'grid min-h-0 flex-1 content-center justify-items-center gap-3 @container',
                 tileCols,
-                'max-[1180px]:grid-cols-2 max-[900px]:grid-cols-1',
+                // Кап колонок только при 2+: одному участнику всегда grid-cols-1,
+                // иначе респонсивный кап уводит его в левую ячейку двуколоночной сетки.
+                tileCount >= 2 && 'max-lg:grid-cols-2 max-md:grid-cols-1',
               )}
             >
               {/* Плитка-заглушка себя, пока комната подключается. */}
@@ -540,7 +533,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
                 />
               ))}
             </div>
-            {callBar(panelToggle)}
+            {callBar()}
           </div>
         )}
 
@@ -566,7 +559,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
             onAllSummaries={() => setSummariesOpen((o) => !o)}
           />
         ) : (
-          <div className="hidden min-h-0 max-[1180px]:hidden min-[1181px]:block">
+          <div className="hidden min-h-0 min-lg:block">
             <SecretaryPanel
               tab={panel}
               onTabChange={onPanelChange}

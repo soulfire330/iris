@@ -1,5 +1,6 @@
-import { MonitorArrowUp, Sparkle } from '@phosphor-icons/react'
+import { ChatTeardropText, MonitorArrowUp, Sparkle } from '@phosphor-icons/react'
 import { formatClock } from '@/lib/names'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 type ConnState = 'connecting' | 'connected' | 'reconnecting' | 'disconnected'
@@ -37,6 +38,7 @@ export function RoomHeader({
   screenLabel,
   connState,
   backendOnline,
+  onOpenPanel,
 }: {
   count: number
   elapsed: number
@@ -45,6 +47,7 @@ export function RoomHeader({
   screenLabel?: string
   connState: ConnState
   backendOnline: boolean
+  onOpenPanel?: () => void
 }) {
   const status = statusBadge(connState, backendOnline)
   const tone = tones[status.tone]
@@ -60,31 +63,42 @@ export function RoomHeader({
       <div className="flex items-center gap-4">
         <div
           className={cn(
-            'flex items-center gap-2 rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em]',
+            'flex items-center gap-2 rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] max-sm:border-0 max-sm:p-0',
             tone.text,
             tone.border,
           )}
         >
           <span className={cn('h-1.5 w-1.5 rounded-full', tone.dot)} />
-          {status.text}
+          <span className="max-sm:hidden">{status.text}</span>
         </div>
         {recording && (
-          <div className="flex items-center gap-2 rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[oklch(0.75_0.14_25)] [border-color:oklch(0.62_0.16_25/0.55)]">
+          <div className="flex items-center gap-2 rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[oklch(0.75_0.14_25)] [border-color:oklch(0.62_0.16_25/0.55)] max-sm:border-0 max-sm:p-0">
             <span className="h-1.5 w-1.5 animate-rec rounded-full bg-recording" />
-            запись
+            <span className="max-sm:hidden">запись</span>
           </div>
         )}
         {secretary && (
-          <div className="flex items-center gap-2 rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-ai-300 [border-color:oklch(0.72_0.1_195/0.5)]">
+          <div className="flex items-center gap-2 rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-ai-300 [border-color:oklch(0.72_0.1_195/0.5)] max-sm:border-0 max-sm:p-0">
             <Sparkle className="h-3 w-3" />
-            секретарь
+            <span className="max-sm:hidden">секретарь</span>
           </div>
         )}
         {screenLabel && (
-          <div className="flex items-center gap-2 rounded-full border border-accent-700 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em] text-accent-300">
+          <div className="flex items-center gap-2 rounded-full border border-accent-700 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em] text-accent-300 max-sm:border-0 max-sm:p-0">
             <MonitorArrowUp className="h-3 w-3" />
-            {screenLabel}
+            <span className="max-sm:hidden">{screenLabel}</span>
           </div>
+        )}
+        {onOpenPanel && (
+          <Button
+            variant="ghost"
+            aria-label="Сводки и чат"
+            title="Сводки и чат"
+            className="h-8 w-8 p-0 min-lg:hidden"
+            onClick={onOpenPanel}
+          >
+            <ChatTeardropText className="h-4 w-4" />
+          </Button>
         )}
       </div>
     </header>
