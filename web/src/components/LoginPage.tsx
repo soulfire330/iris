@@ -46,6 +46,24 @@ export function LoginPage({ onLogin }: { onLogin: (s: Session) => void }) {
   const [micOn, setMicOn] = useState(() => localStorage.getItem(LS_MIC) === '1')
   const [camOn, setCamOn] = useState(() => localStorage.getItem(LS_CAM) === '1')
 
+  // Доступность устройств: без микрофона/камеры кнопки серые, как в комнате
+  // (enumerateDevices не требует разрешения).
+  const [micAvailable, setMicAvailable] = useState(true)
+  const [camAvailable, setCamAvailable] = useState(true)
+  useEffect(() => {
+    let alive = true
+    const check = async () => {
+      const list = await navigator.mediaDevices.enumerateDevices().catch(() => [] as MediaDeviceInfo[])
+      if (!alive) return
+      setMicAvailable(list.some((d) => d.kind === 'audioinput'))
+      setCamAvailable(list.some((d) => d.kind === 'videoinput'))
+    }
+    void check()
+    return () => {
+      alive = false
+    }
+  }, [])
+
   const selected = useMemo(() => rooms.find((r) => r.name === room) ?? null, [rooms, room])
 
   // Живой опрос: счётчики людей и метка записи обновляются, пока человек
@@ -292,8 +310,9 @@ export function LoginPage({ onLogin }: { onLogin: (s: Session) => void }) {
               onClick={() => void toggleMic()}
               aria-pressed={micOn}
               title="Микрофон"
+              disabled={!micAvailable}
               className={cn(
-                'flex size-9 flex-none items-center justify-center rounded-sm border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+                'flex size-9 flex-none items-center justify-center rounded-sm border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:pointer-events-none disabled:opacity-50',
                 micOn
                   ? 'border-primary text-primary'
                   : 'border-neutral-800 text-neutral-500 hover:border-neutral-700 hover:text-neutral-300',
@@ -306,8 +325,9 @@ export function LoginPage({ onLogin }: { onLogin: (s: Session) => void }) {
               onClick={() => void toggleCam()}
               aria-pressed={camOn}
               title="Камера"
+              disabled={!camAvailable}
               className={cn(
-                'flex size-9 flex-none items-center justify-center rounded-sm border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+                'flex size-9 flex-none items-center justify-center rounded-sm border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:pointer-events-none disabled:opacity-50',
                 camOn
                   ? 'border-primary text-primary'
                   : 'border-neutral-800 text-neutral-500 hover:border-neutral-700 hover:text-neutral-300',
