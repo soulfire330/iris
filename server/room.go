@@ -107,7 +107,17 @@ func (a *App) handleRooms(w http.ResponseWriter, r *http.Request) {
 			if p.Kind != livekit.ParticipantInfo_STANDARD {
 				continue
 			}
-			st.Participants = append(st.Participants, roomStateParticipant{Identity: p.Identity, Name: p.Name})
+			// Seed — из metadata токена: тот же зверь, что в комнате
+			// (см. roomParticipant в handleRoom).
+			var meta struct {
+				Seed string `json:"seed"`
+			}
+			_ = json.Unmarshal([]byte(p.Metadata), &meta)
+			st.Participants = append(st.Participants, roomStateParticipant{
+				Identity: p.Identity,
+				Name:     p.Name,
+				Seed:     meta.Seed,
+			})
 		}
 		st.NumParticipants = len(st.Participants)
 		a.recMu.Lock()
@@ -129,6 +139,7 @@ type roomState struct {
 type roomStateParticipant struct {
 	Identity string `json:"identity"`
 	Name     string `json:"name"`
+	Seed     string `json:"seed,omitempty"`
 }
 
 type roomParticipant struct {

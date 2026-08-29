@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { fetchRooms, login, type RoomOption, type Session } from '@/lib/api'
-import { initials } from '@/lib/names'
+import { avatarUrl } from '@/lib/avatars'
 import { cn } from '@/lib/utils'
 
 // Намерение «с чем войти»: микрофон/камера включаются в комнате после
@@ -219,17 +219,19 @@ export function LoginPage({ onLogin }: { onLogin: (s: Session) => void }) {
                     {r.num_participants > 0 && (
                       <span className="flex flex-none items-center">
                         {r.participants.slice(0, 3).map((p, i) => (
-                          <span
+                          // Сгенерированный аватар (DiceBear): тот же зверь,
+                          // что в комнате, — seed из metadata токена.
+                          <img
                             key={p.identity}
+                            src={avatarUrl(p.identity, p.seed)}
+                            alt={p.name}
                             className={cn(
-                              'flex size-5.5 items-center justify-center rounded-full border bg-neutral-800 text-9 text-neutral-300',
+                              'size-5.5 rounded-full border object-cover',
                               // Обводка — цветом фона строки: аватары «врезаны» в строку.
                               active ? 'border-card' : 'border-background',
                               i > 0 && '-ml-0.5',
                             )}
-                          >
-                            {initials(p.name)}
-                          </span>
+                          />
                         ))}
                         {r.num_participants > 3 && (
                           <span
