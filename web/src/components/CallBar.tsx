@@ -32,6 +32,8 @@ export interface CallBarProps {
 }
 
 export function CallBar(p: CallBarProps) {
+  // Демонстрация экрана недоступна на iOS (нет getDisplayMedia) — прячем кнопку.
+  const canShare = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getDisplayMedia
   return (
     <div className="flex flex-none flex-wrap items-center justify-between gap-4 rounded-md bg-card p-3 shadow-sm">
       <div className="flex items-center gap-3">
@@ -45,14 +47,16 @@ export function CallBar(p: CallBarProps) {
         >
           {p.muted ? <MicrophoneSlash /> : <Microphone weight="fill" />}
         </IconButton>
-        <IconButton
-          onClick={p.onScreen}
-          active={p.screenOn}
-          activeClass="text-destructive"
-          label={p.screenOn ? 'Закончить демонстрацию' : 'Начать демонстрацию'}
-        >
-          <MonitorArrowUp />
-        </IconButton>
+        {canShare && (
+          <IconButton
+            onClick={p.onScreen}
+            active={p.screenOn}
+            activeClass="text-destructive"
+            label={p.screenOn ? 'Закончить демонстрацию' : 'Начать демонстрацию'}
+          >
+            <MonitorArrowUp />
+          </IconButton>
+        )}
         <IconButton onClick={p.onCamera} active={p.cameraOn} activeClass="text-destructive" disabled={!p.camAvailable} label={p.cameraOn ? 'Выключить камеру' : 'Включить камеру'}>
           <VideoCamera />
         </IconButton>
