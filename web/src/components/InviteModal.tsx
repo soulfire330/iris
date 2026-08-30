@@ -73,7 +73,7 @@ export function InviteModal({ open, room, onClose }: { open: boolean; room: stri
   const revoke = async (token: string) => {
     setError("");
     try {
-      await revokeInvite(token);
+      await revokeInvite(room, token);
       setInvites((cur) => cur.filter((i) => i.token !== token));
     } catch (err) {
       setError(err instanceof Error ? err.message : "не удалось отозвать инвайт");

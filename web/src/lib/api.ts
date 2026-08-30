@@ -129,8 +129,10 @@ export async function fetchInvites(room: string): Promise<InviteMeta[]> {
   return data as InviteMeta[];
 }
 
-export async function revokeInvite(token: string): Promise<void> {
-  const res = await req(`/api/invite/${encodeURIComponent(token)}`, { method: "DELETE" });
+export async function revokeInvite(room: string, token: string): Promise<void> {
+  const res = await req(`/api/invite/${encodeURIComponent(token)}?room=${encodeURIComponent(room)}`, {
+    method: "DELETE",
+  });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error ?? `Ошибка ${res.status}`);
 }
