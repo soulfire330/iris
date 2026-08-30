@@ -444,15 +444,22 @@ func (a *App) handleRecordingStop(w http.ResponseWriter, r *http.Request) {
 	}
 	info := comp
 
-	// Снимок участников на стопе (решение Q8) — «краткий список» в UI. Сам
-	// egress ещё числится в комнате, пока не вышел, — отбрасываем его.
+	// Снимок участников на стопе (решение Q8) — «краткий список» в UI и
+	// «Участники встречи» в prompt сводки. Сам egress ещё числится в комнате,
+	// пока не вышел, — отбрасываем его. Имена, не логины: гостю логин —
+	// inv-<токен> (64 hex), в списке и сводке ему не место; у сотрудников
+	// login и имя — разные сущности, UI хочет имя (docs/API.md).
 	var participants []string
 	if resp, err := a.livekit.ListParticipants(ctx, &livekit.ListParticipantsRequest{Room: room}); err == nil {
 		for _, p := range resp.Participants {
 			if p.Kind == livekit.ParticipantInfo_EGRESS {
 				continue
 			}
-			participants = append(participants, p.Identity)
+			name := p.Name
+			if name == "" {
+				name = p.Identity
+			}
+			participants = append(participants, name)
 		}
 		sort.Strings(participants)
 	}
