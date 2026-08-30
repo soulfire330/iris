@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -32,6 +33,7 @@ func main() {
 	app := &App{
 		cfg:       cfg,
 		limits:    NewLoginLimiter(),
+		invites:   newInviteStore(filepath.Join(cfg.Server.DataDir, "invites.json")),
 		publicKey: os.Getenv("PUBLIC_API_KEY"),
 		livekit:   livekitService(cfg.Server.LiveKit.Host, cfg.Server.LiveKit.APIKey, cfg.Server.LiveKit.APISecret),
 		egress:    egressService(cfg.Server.LiveKit.Host, cfg.Server.LiveKit.APIKey, cfg.Server.LiveKit.APISecret),
@@ -57,6 +59,14 @@ func main() {
 	// login, rooms, healthz и аватары (картинки без заголовков).
 	mux.HandleFunc("GET /api/room", app.requireToken(app.handleRoom))
 	mux.Handle("GET /api/avatar/{login}", publicLimiter(http.HandlerFunc(app.handleAvatar)))
+	// Инвайты: создание/список/отзыв — под токеном и только для сотрудников
+	// (employeeOnly); страница гостя — публичная (GET), вход — как логин,
+	// с жёстким per-IP лимитом: токен инвайта — bearer-креденциал.
+	mux.HandleFunc("POST /api/invite", app.requireToken(app.handleInviteCreate))
+	mux.HandleFunc("GET /api/invites", app.requireToken(app.handleInviteList))
+	mux.HandleFunc("DELETE /api/invite/{token}", app.requireToken(app.handleInviteRevoke))
+	mux.Handle("GET /api/invite/{token}", publicLimiter(http.HandlerFunc(app.handleInviteInfo)))
+	mux.Handle("POST /api/invite/{token}/join", loginLimiter(http.HandlerFunc(app.handleInviteJoin)))
 	mux.HandleFunc("POST /api/recording/start", app.requireToken(app.handleRecordingStart))
 	mux.HandleFunc("POST /api/recording/stop", app.requireToken(app.handleRecordingStop))
 	mux.HandleFunc("POST /api/recording/summary", app.requireToken(app.handleRecordingSummary))
@@ -67,7 +77,7 @@ func main() {
 	mux.Handle("GET /api/public/recordings", publicLimiter(app.publicAuth(app.handleRecordingsList)))
 	mux.Handle("GET /api/public/recordings/{name}", publicLimiter(app.publicAuth(app.handleRecordingDownload)))
 	mux.Handle("GET /api/public/status", publicLimiter(app.publicAuth(app.handlePublicStatus)))
-	mux.Handle("/", http.FileServer(http.Dir(cfg.Server.WebDir)))
+	mux.Handle("/", spaFallback(cfg.Server.WebDir, http.FileServer(http.Dir(cfg.Server.WebDir))))
 
 	// Сжатие ответов (gzip/brotli по Accept-Encoding): аватары в /api/rooms
 	// и /api/room — raw SVG, ужимаются в ~3 раза. mp4 не сжимаем (blacklist):
@@ -83,6 +93,21 @@ func main() {
 	slog.Info("office: listening", "addr", cfg.Server.Listen)
 	slog.Error("http", "err", http.ListenAndServe(cfg.Server.Listen, accessLog(compressor(mux))))
 	os.Exit(1)
+}
+
+// spaFallback — роуты фронта (/invite/<токен> и будущие страницы): файла нет
+// — отдаём index.html. /api/* не трогаем: неизвестный эндпоинт — честный 404.
+func spaFallback(webDir string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := r.URL.Path
+		if !strings.HasPrefix(p, "/api/") && p != "/" {
+			if _, err := os.Stat(filepath.Join(webDir, filepath.Clean(p))); err != nil {
+				http.ServeFile(w, r, filepath.Join(webDir, "index.html"))
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // accessLog — строка на каждый HTTP-запрос: IP, метод, путь, статус, мс.

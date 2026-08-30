@@ -68,6 +68,73 @@ export async function login(login: string, password: string, room: string): Prom
   return data as Session;
 }
 
+// --- Инвайт-ссылки (гостевой вход, см. docs): ---
+
+// InviteInfo — ответ GET /api/invite/{token}: страница гостя до входа.
+// identity — identity гостя в LiveKit (для проверки «вы уже в комнате»),
+// avatar_seed стабилен на весь инвайт: превью = лицо в комнате.
+export interface InviteInfo {
+  token: string;
+  identity: string;
+  name: string;
+  room: string;
+  room_display: string;
+  avatar_seed: string;
+  expires_at: string;
+  recording: boolean;
+  participants: { identity: string; name: string }[];
+}
+
+// InviteMeta — строка в модалке «Пригласить»: имя гостя и срок жизни.
+export interface InviteMeta {
+  token: string;
+  name: string;
+  created_at: string;
+  expires_at: string;
+}
+
+// Страница гостя опрашивает состояние комнаты, как экран входа — комнаты.
+export async function fetchInviteInfo(token: string): Promise<InviteInfo> {
+  const res = await req(`/api/invite/${encodeURIComponent(token)}`);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error ?? `Ошибка ${res.status}`);
+  return data as InviteInfo;
+}
+
+// Вход по ссылке: LiveKit-токен гостя, сессия как после /api/login.
+export async function joinInvite(token: string): Promise<Session> {
+  const res = await req(`/api/invite/${encodeURIComponent(token)}/join`, { method: "POST" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error ?? `Ошибка ${res.status}`);
+  return data as Session;
+}
+
+// Создание инвайта сотрудником (модалка «Пригласить»); ttl_sec — 60..2592000.
+export async function createInvite(room: string, name: string, ttlSec: number): Promise<InviteMeta> {
+  const res = await req(`/api/invite?room=${encodeURIComponent(room)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, ttl_sec: ttlSec }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error ?? `Ошибка ${res.status}`);
+  return data as InviteMeta;
+}
+
+// Живые инвайты комнаты — все, не только свои: чужой «забытый» можно отозвать.
+export async function fetchInvites(room: string): Promise<InviteMeta[]> {
+  const res = await req(`/api/invites?room=${encodeURIComponent(room)}`);
+  const data = await res.json().catch(() => []);
+  if (!res.ok) throw new Error(data.error ?? `Ошибка ${res.status}`);
+  return data as InviteMeta[];
+}
+
+export async function revokeInvite(token: string): Promise<void> {
+  const res = await req(`/api/invite/${encodeURIComponent(token)}`, { method: "DELETE" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error ?? `Ошибка ${res.status}`);
+}
+
 // Общий таймер комнаты: started_at_ms — момент входа первого участника
 // (сервер берёт его из LiveKit), server_now_ms — часы сервера для
 // выравнивания тика. 0 в started_at_ms — комната ещё пуста.

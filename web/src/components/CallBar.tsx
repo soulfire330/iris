@@ -5,6 +5,7 @@ import {
   Record,
   SignOut,
   Sparkle,
+  UserPlus,
   VideoCamera,
   X,
 } from "@phosphor-icons/react";
@@ -20,9 +21,13 @@ export interface CallBarProps {
   aiSummary: boolean; // идёт запись со сводкой (AI-кнопка)
   micAvailable: boolean;
   camAvailable: boolean;
+  // Сотрудники: инвайты, запись и заказ сводки. Гостям кнопок нет — и на
+  // сервере роль guest режет эти эндпоинты (employeeOnly), здесь только UI.
+  canManage: boolean;
   onMic: () => void;
   onCamera: () => void;
   onScreen: () => void;
+  onInvite: () => void;
   onRecord: () => void;
   onAi: () => void;
   onLeave: () => void;
@@ -67,27 +72,35 @@ export function CallBar(p: CallBarProps) {
           <VideoCamera />
         </IconButton>
         <span className="h-6 w-px bg-neutral-600/50" />
-        <IconButton
-          onClick={p.onRecord}
-          active={p.recording}
-          activeClass="text-recording"
-          label={p.recording ? "Остановить запись" : "Записать звонок"}
-        >
-          <Record weight={p.recording ? "fill" : "regular"} />
-        </IconButton>
-        {/* AI-сводка: появляется только при идущей записи (решение: не путать
-            со стартом записи) и заказывает сводку для неё. Уже заказана —
-            кнопка серая, повторный клик ничего не делает. */}
-        {p.recording && (
-          <IconButton
-            onClick={p.onAi}
-            active={p.aiSummary}
-            activeClass="text-ai"
-            disabled={p.aiSummary}
-            label={p.aiSummary ? "Сводка заказана" : "Заказать AI-сводку"}
-          >
-            <Sparkle weight={p.aiSummary ? "fill" : "regular"} />
-          </IconButton>
+        {/* Сотрудникам — инвайт (перед записью), запись и заказ сводки; гостям — нет. */}
+        {p.canManage && (
+          <>
+            <IconButton onClick={p.onInvite} label="Пригласить по ссылке">
+              <UserPlus />
+            </IconButton>
+            <IconButton
+              onClick={p.onRecord}
+              active={p.recording}
+              activeClass="text-recording"
+              label={p.recording ? "Остановить запись" : "Записать звонок"}
+            >
+              <Record weight={p.recording ? "fill" : "regular"} />
+            </IconButton>
+            {/* AI-сводка: появляется только при идущей записи (решение: не путать
+                со стартом записи) и заказывает сводку для неё. Уже заказана —
+                кнопка серая, повторный клик ничего не делает. */}
+            {p.recording && (
+              <IconButton
+                onClick={p.onAi}
+                active={p.aiSummary}
+                activeClass="text-ai"
+                disabled={p.aiSummary}
+                label={p.aiSummary ? "Сводка заказана" : "Заказать AI-сводку"}
+              >
+                <Sparkle weight={p.aiSummary ? "fill" : "regular"} />
+              </IconButton>
+            )}
+          </>
         )}
         {p.extra}
       </div>

@@ -18,6 +18,8 @@ import (
 type App struct {
 	cfg    *Config
 	limits *LoginLimiter
+	// invites — инвайт-ссылки гостей (JSON в data_dir, см. invites.go).
+	invites *inviteStore
 	// publicKey — ключ публичного API (PUBLIC_API_KEY из env); пусто — фича
 	// выключена, /api/public/* отвечает 404.
 	publicKey string
@@ -140,6 +142,26 @@ func (a *App) requireToken(next http.HandlerFunc) http.HandlerFunc {
 			next(w, r.WithContext(context.WithValue(r.Context(), tokenCtxKey, grants)))
 		}
 	}
+}
+
+// employeeOnly — гостям (role "guest" в metadata токена) недоступно
+// управление записью и создание инвайтов: фронт прячет кнопки, здесь —
+// запрет для прямых запросов. Пустая роль (сотрудник без роли в конфиге)
+// и любые другие роли проходят.
+func (a *App) employeeOnly(w http.ResponseWriter, r *http.Request) bool {
+	grants, ok := r.Context().Value(tokenCtxKey).(*auth.ClaimGrants)
+	if !ok || grants == nil || grants.Metadata == "" {
+		return true // токены без metadata — сотрудники
+	}
+	var meta struct {
+		Role string `json:"role"`
+	}
+	_ = json.Unmarshal([]byte(grants.Metadata), &meta)
+	if meta.Role == "guest" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "гостю недоступно"})
+		return false
+	}
+	return true
 }
 
 // roomFromRequest — обязательный параметр комнаты (?room=): комната из

@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { RoomEvent, Track, type LocalTrackPublication } from "livekit-client";
 import { Button } from "@/components/ui/button";
 import { CallBar } from "@/components/CallBar";
+import { InviteModal } from "@/components/InviteModal";
 import { ParticipantTile } from "@/components/ParticipantTile";
 import { RoomHeader } from "@/components/RoomHeader";
 import { ScreenView } from "@/components/ScreenView";
@@ -24,6 +25,9 @@ import { cn } from "@/lib/utils";
 
 export function RoomPage({ session, onLeave }: { session: Session; onLeave: () => void }) {
   const [panelOpen, setPanelOpen] = useState(false);
+  // Модалка «Пригласить по ссылке» — открывается кнопкой в CallBar (только
+  // у сотрудников; гостям кнопки нет, сервер тоже режет).
+  const [inviteOpen, setInviteOpen] = useState(false);
   // Таб правой колонки живёт здесь, а не в SecretaryPanel: панель монтируется
   // в трёх местах (колонка, рельс, оверлей), и состояние должно быть одно.
   const [panel, setPanel] = useState<PanelTab>("summaries");
@@ -479,9 +483,12 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
       aiSummary={aiSummary}
       micAvailable={micAvailable}
       camAvailable={camAvailable}
+      // Пустая роль в конфиге — сотрудник; «guest» — гость по инвайту.
+      canManage={(session.role ?? "") !== "guest"}
       onMic={() => void setMic(!micOn)}
       onCamera={() => void setCam(!camOn)}
       onScreen={() => void setScreen(!screenOn)}
+      onInvite={() => setInviteOpen(true)}
       onRecord={() => void onRecord()}
       onAi={() => void onAi()}
       onLeave={onLeave}
@@ -706,6 +713,9 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
           </div>
         </div>
       )}
+
+      {/* Приглашение по ссылке: модалка живёт поверх комнаты, комната работает. */}
+      {inviteOpen && <InviteModal open room={session.room} onClose={() => setInviteOpen(false)} />}
     </div>
   );
 }

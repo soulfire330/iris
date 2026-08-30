@@ -155,6 +155,9 @@ func (a *App) handleRecordingStart(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if !a.employeeOnly(w, r) {
+		return
+	}
 	var req struct {
 		Login string `json:"login"`
 	}
@@ -392,6 +395,9 @@ func (a *App) handleRecordingStop(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if !a.employeeOnly(w, r) {
+		return
+	}
 	ctx := r.Context()
 	// Кто жмёт стоп — из тела (как на старте): без этого «кто остановил» не
 	// узнать, авторизации на запросах нет. Пустое тело — старые клиенты.
@@ -493,6 +499,9 @@ func (a *App) handleRecordingSummary(w http.ResponseWriter, r *http.Request) {
 
 	room, ok := a.roomFromRequest(w, r)
 	if !ok {
+		return
+	}
+	if !a.employeeOnly(w, r) {
 		return
 	}
 	ctx := r.Context()
