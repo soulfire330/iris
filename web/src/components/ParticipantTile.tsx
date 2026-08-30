@@ -15,7 +15,8 @@ import { Video } from "@/components/Video";
 // Аватар масштабируется с шириной плитки (cqw), пол — 40px. Кривая
 // немонотонная (на lg плиток в ряду больше — аватар меньше), поэтому одной
 // clamp() не обойтись: точки подобраны под реальную сетку плиток.
-const avatarSize =
+// Экспортируется для InviteTile: «кресло» гостя выглядит как плитка.
+export const avatarSize =
   "size-[max(40px,10cqw)] sm:size-[max(40px,20cqw)] lg:size-[max(40px,14cqw)] 2xl:size-[max(40px,32cqw)]";
 
 export interface TileState {

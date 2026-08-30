@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { RoomEvent, Track, type LocalTrackPublication } from "livekit-client";
 import { Button } from "@/components/ui/button";
 import { CallBar } from "@/components/CallBar";
-import { InviteModal } from "@/components/InviteModal";
+import { InviteTile } from "@/components/InviteTile";
 import { ParticipantTile } from "@/components/ParticipantTile";
 import { RoomHeader } from "@/components/RoomHeader";
 import { ScreenView } from "@/components/ScreenView";
@@ -13,21 +13,38 @@ import { useChat } from "@/hooks/useChat";
 import { useBackendStatus } from "@/hooks/useBackendStatus";
 import { DEFAULT_DSP, useRoom } from "@/hooks/useRoom";
 import {
+  createInvite,
+  fetchInvites,
   fetchRecordings,
+  revokeInvite,
   startRecording,
   stopRecording,
   enableRecordingSummary,
+  type InviteMeta,
   type RecordingFile,
   type Session,
 } from "@/lib/api";
+import { inviteSeats } from "@/lib/invites";
 import { fromParticipant, type Member } from "@/lib/members";
 import { cn } from "@/lib/utils";
 
+// Фиксированный срок «кресла» гостя — 24 ч (решение Q2a): выбора TTL нет,
+// протухшие плитки просто исчезают. Сервер режет ttl_sec > 2592000.
+const INVITE_TTL_SEC = 86_400;
+
 export function RoomPage({ session, onLeave }: { session: Session; onLeave: () => void }) {
   const [panelOpen, setPanelOpen] = useState(false);
-  // Модалка «Пригласить по ссылке» — открывается кнопкой в CallBar (только
-  // у сотрудников; гостям кнопки нет, сервер тоже режет).
-  const [inviteOpen, setInviteOpen] = useState(false);
+  // Инвайты-«кресла» (редизайн): клик по кнопке в CallBar добавляет в сетку
+  // плитку гостя — сначала черновик с полем имени (draft, локальный, чужие
+  // клиенты его не видят), после создания — общее «кресло» комнаты (invites,
+  // синхронизируется поллингом). Только у сотрудников; гостям кнопки нет.
+  const canManage = (session.role ?? "") !== "guest";
+  const [invites, setInvites] = useState<InviteMeta[]>([]);
+  const [draft, setDraft] = useState<{ seed: string } | null>(null);
+  // Тик тряски черновика: попытка завести вторую плитку, пока имя не введено.
+  const [shake, setShake] = useState(0);
+  // Токен инвайта, ссылку которого только что скопировали (галочка на 1.5с).
+  const [copied, setCopied] = useState("");
   // Таб правой колонки живёт здесь, а не в SecretaryPanel: панель монтируется
   // в трёх местах (колонка, рельс, оверлей), и состояние должно быть одно.
   const [panel, setPanel] = useState<PanelTab>("summaries");
@@ -153,6 +170,86 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
   }, [recording]);
 
   const [actionError, setActionError] = useState("");
+
+  // Синхронизация «кресел» между клиентами сотрудников: создание, отзыв и
+  // протухание чужих инвайтов доезжают поллингом (решение Q4a). Черновики
+  // (draft) никуда не едут — они локальные, конкуренции за ввод имени нет.
+  useEffect(() => {
+    if (!canManage) return;
+    let alive = true;
+    const poll = async () => {
+      try {
+        const list = await fetchInvites(session.room);
+        if (alive) setInvites(list);
+      } catch {
+        // Нет связи с сервером — оставляем текущий список, ошибка не фатальна.
+      }
+    };
+    poll();
+    const t = setInterval(poll, 10_000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [canManage, session.room]);
+
+  // Клик «Пригласить»: новая плитка-черновик, или тряска существующей —
+  // больше одной незаполненной плитки не бывает (решение Q7a).
+  const onInviteClick = () => {
+    if (draft) {
+      setShake((s) => s + 1);
+      return;
+    }
+    // Новая плитка появляется без тряски; счётчик сбрасываем, чтобы
+    // пересозданный черновик не унаследовал тряску прошлого.
+    setShake(0);
+    setDraft({ seed: crypto.randomUUID() });
+  };
+
+  // Создание инвайта из черновика: имя становится статичным, ссылка сразу
+  // в буфер обмена (иконка копирования в футере — запасной путь). TTL
+  // фиксированный (INVITE_TTL_SEC); протухшие «кресла» убирает фильтр в seats.
+  const createSeat = async (name: string) => {
+    setActionError("");
+    try {
+      const inv = await createInvite(session.room, name.trim(), INVITE_TTL_SEC);
+      setInvites((cur) => [...cur, inv]);
+      setDraft(null);
+      const url = `${window.location.origin}/invite/${inv.token}`;
+      try {
+        await navigator.clipboard.writeText(url);
+        setCopied(inv.token);
+        setTimeout(() => setCopied((cur) => (cur === inv.token ? "" : cur)), 1500);
+      } catch {
+        // Буфер недоступен (не-HTTP) — ссылку скопируют иконкой в футере.
+      }
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "не удалось создать инвайт");
+    }
+  };
+
+  const copySeat = async (token: string) => {
+    const url = `${window.location.origin}/invite/${token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(token);
+      setTimeout(() => setCopied((cur) => (cur === token ? "" : cur)), 1500);
+    } catch {
+      // Как в createSeat: иконка остаётся кликабельной, подсказок не надо.
+    }
+  };
+
+  // Отзыв «кресла»: будущие входы по ссылке перестанут работать, уже
+  // сидящий гость остаётся (сервер режет только новые входы).
+  const revokeSeat = async (token: string) => {
+    setActionError("");
+    try {
+      await revokeInvite(session.room, token);
+      setInvites((cur) => cur.filter((i) => i.token !== token));
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "не удалось отозвать инвайт");
+    }
+  };
   // Тик принудительного обновления списка записей: файл финализируется
   // egress'ом с задержкой после стопа — без повтора список висит пустым.
   const [recTick, setRecTick] = useState(0);
@@ -304,6 +401,23 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
     );
   }, [roomInfo, members, session.login]);
 
+  // «Кресла» гостей: каждый живой инвайт — плитка в сетке (решение Q1a).
+  // identity гостя = inv-<token> (сервер), поэтому кресло точно сопоставляется
+  // с живым участником и морфит в него на том же ключе, не двигаясь.
+  // Фильтр «живой гость или живой инвайт» — в lib/invites (покрыт тестами).
+  const inviteIds = useMemo(() => new Set(invites.map((i) => `inv-${i.token}`)), [invites]);
+  const seats = useMemo(() => {
+    const byId = new Map(members.map((m) => [m.id, m]));
+    const ids = new Set(members.map((m) => m.id));
+    return inviteSeats(invites, ids, now).map((s) => ({ ...s, member: byId.get(s.id) }));
+  }, [invites, members, now]);
+
+  // Живые участники-не-гости: сотрудники в сетке идут до «кресел» (кресло
+  // не двигается при морфе, даже если после него зашли другие).
+  const nonInviteMembers = canManage ? members.filter((m) => !inviteIds.has(m.id)) : members;
+  // Заглушки из снапшота комнаты: гости, чьё кресло уже рисуется, не дублируются.
+  const pendingRest = pendingOthers.filter((p) => !inviteIds.has(p.identity));
+
   const sharer = members.find((m) => m.screenSharing);
   // Демонстрация занимает крупный план сама: кто первый начал — тот в приоритете.
   // Смена показывающего (или завершение показа) переключает/снимает крупный план;
@@ -344,8 +458,9 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
   }, [stage, stageMember]);
   const speaker = members.find((m) => m.speaking);
 
-  // Заглушки рисуются и до, и после коннекта (пока не пришёл участник).
-  const tileCount = (connected ? members.length : 1) + pendingOthers.length;
+  // Заглушки и «кресла» — все квадраты сетки (живые + ожидающие + черновик).
+  const tileCount =
+    (connected ? nonInviteMembers.length : 1) + seats.length + (draft ? 1 : 0) + pendingRest.length;
 
   // Колонки подбираются под доступную высоту: плитки 16:9 всегда помещаются
   // в поле сетки (вместо фиксированных колонок от числа людей, которые при
@@ -483,12 +598,11 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
       aiSummary={aiSummary}
       micAvailable={micAvailable}
       camAvailable={camAvailable}
-      // Пустая роль в конфиге — сотрудник; «guest» — гость по инвайту.
-      canManage={(session.role ?? "") !== "guest"}
+      canManage={canManage}
       onMic={() => void setMic(!micOn)}
       onCamera={() => void setCam(!camOn)}
       onScreen={() => void setScreen(!screenOn)}
-      onInvite={() => setInviteOpen(true)}
+      onInvite={onInviteClick}
       onRecord={() => void onRecord()}
       onAi={() => void onAi()}
       onLeave={onLeave}
@@ -587,7 +701,7 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
                 />
               )}
               {connected &&
-                members.map((m) => (
+                nonInviteMembers.map((m) => (
                   <ParticipantTile
                     key={m.id}
                     participant={m.participant}
@@ -614,7 +728,61 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
                     }
                   />
                 ))}
-              {pendingOthers.map((p) => (
+              {canManage &&
+                seats.map(({ inv, id, member }) =>
+                  // Ключ inv-<token> един для «кресла» и живого гостя: вход
+                  // морфит плитку на месте (решение: user-seat не двигается).
+                  member ? (
+                    <ParticipantTile
+                      key={id}
+                      participant={member.participant}
+                      isLocal={member.isLocal}
+                      width={fitTileW || undefined}
+                      state={{
+                        name: member.name,
+                        role: member.role,
+                        seed: member.seed,
+                        speaking: member.speaking,
+                        muted: member.muted,
+                        poor: member.poor,
+                        cameraOn: member.cameraOn,
+                        screenSharing: member.screenSharing,
+                      }}
+                      onExpand={
+                        (member.cameraOn || member.screenSharing) && member.participant
+                          ? () =>
+                              setStage({
+                                id: member.id,
+                                source: member.screenSharing ? Track.Source.ScreenShare : Track.Source.Camera,
+                              })
+                          : undefined
+                      }
+                    />
+                  ) : (
+                    <InviteTile
+                      key={id}
+                      mode="waiting"
+                      name={inv.name}
+                      seed={id}
+                      width={fitTileW || undefined}
+                      copied={copied === inv.token}
+                      onCopy={() => void copySeat(inv.token)}
+                      onRevoke={() => void revokeSeat(inv.token)}
+                    />
+                  ),
+                )}
+              {canManage && draft && (
+                <InviteTile
+                  key="invite-draft"
+                  mode="draft"
+                  seed={draft.seed}
+                  width={fitTileW || undefined}
+                  shake={shake}
+                  onCreate={(n) => void createSeat(n)}
+                  onRevoke={() => setDraft(null)}
+                />
+              )}
+              {pendingRest.map((p) => (
                 <ParticipantTile
                   key={p.identity}
                   connecting
@@ -714,8 +882,6 @@ export function RoomPage({ session, onLeave }: { session: Session; onLeave: () =
         </div>
       )}
 
-      {/* Приглашение по ссылке: модалка живёт поверх комнаты, комната работает. */}
-      {inviteOpen && <InviteModal open room={session.room} onClose={() => setInviteOpen(false)} />}
     </div>
   );
 }

@@ -23,7 +23,7 @@ function peoplePlural(n: number): string {
 export function InvitePage({ token, onLogin }: { token: string; onLogin: (s: Session) => void }) {
   const [info, setInfo] = useState<InviteInfo | null>(null);
   // Ссылка мертва (404/410) — показываем причину и всё, кнопок нет.
-  const [dead, setDead] = useState("");
+  const [dead, setDead] = useState(false);
   // Сервер не ответил — «пробуем снова», опрос продолжается.
   const [offline, setOffline] = useState(false);
   const [micOn, setMicOn] = useState(() => localStorage.getItem(LS_MIC) === "1");
@@ -45,7 +45,7 @@ export function InvitePage({ token, onLogin }: { token: string; onLogin: (s: Ses
         if (stopped) return;
         const msg = e instanceof Error ? e.message : "";
         // Мёртвой ссылку делают только 404/410; 429/502 — транзиент, опрос продолжается.
-        if (msg === "инвайт не найден или отозван" || msg === "инвайт истёк") setDead(msg);
+        if (msg === "инвайт не найден или отозван" || msg === "инвайт истёк") setDead(true);
         else setOffline(true);
       }
     };
@@ -120,9 +120,9 @@ export function InvitePage({ token, onLogin }: { token: string; onLogin: (s: Ses
           // Ссылка недействительна или истекла: причина от сервера, без кнопок.
           <div className="flex flex-col items-center gap-3 rounded-sm border border-border bg-card px-6 py-8 text-center">
             <UserCirclePlus size={28} className="text-neutral-600" />
-            <h2 className="text-xl font-medium tracking-title">Ссылка не работает</h2>
-            <p className="text-sm text-neutral-500">{dead}</p>
-            <p className="text-xs text-neutral-600">Попросите новый инвайт у кого-нибудь в комнате.</p>
+            <h2 className="text-xl font-medium tracking-title">Ссылка не действительна</h2>
+            <p className="text-sm text-neutral-500">Приглашение не найдено или истекло.</p>
+            <p className="text-xs text-neutral-600">Попросите оформить приглашение ещё раз у администраторов комнаты.</p>
           </div>
         ) : !info ? (
           // Первый ответ ещё не пришёл: offline — «сервер не отвечает», иначе

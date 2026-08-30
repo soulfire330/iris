@@ -191,6 +191,7 @@
 
   --animate-rec: rec 1.8s ease-in-out infinite;
   --animate-breathe: breathe 2.6s ease-in-out infinite;
+  --animate-shake: tile-shake 0.45s ease-in-out;
 }
 
 @keyframes rec {
@@ -209,6 +210,26 @@
   }
   50% {
     opacity: 0.45;
+  }
+}
+/* Тряска незаполненной плитки-черновика при попытке создать вторую (Q7a).
+   Короткая и резкая: один проход с затуханием амплитуды. */
+@keyframes tile-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-9px);
+  }
+  40% {
+    transform: translateX(7px);
+  }
+  60% {
+    transform: translateX(-5px);
+  }
+  80% {
+    transform: translateX(3px);
   }
 }
 
