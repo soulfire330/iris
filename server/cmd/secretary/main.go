@@ -21,7 +21,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"office/internal/logging"
@@ -32,6 +34,9 @@ const (
 	finalAge     = 30 * time.Second // mp4 «дописан»: mtime старше — egress закрыл файл
 	maxAttempts  = 3                // попыток на запись, дальше — статус error
 	retryAfter   = time.Minute      // пауза между попытками
+	// sttConcurrency — параллельных STT-вызовов дорожек. ponytail: пул вместо
+	// «все сразу» — не утопить GPU STT-сервера; поднять, если сервер потянет.
+	sttConcurrency = 3
 )
 
 // sidecar — поля записи, которые читает воркер (см. recordings.go recMeta).
@@ -39,15 +44,42 @@ type sidecar struct {
 	StartedBy    string   `json:"started_by"`
 	Participants []string `json:"participants"`
 	Summary      bool     `json:"summary"`
+	StartedAt    string   `json:"started_at"` // RFC3339 — начало встречи, точка отсчёта дорожек
 }
 
 // summary — {имя}.summary.json: состояние разбора и результат.
 type summary struct {
-	Status     string `json:"status"` // transcribing → summarizing → done; error после maxAttempts
-	Attempts   int    `json:"attempts"`
-	Error      string `json:"error"`
-	Transcript string `json:"transcript,omitempty"`
-	Summary    string `json:"summary,omitempty"`
+	Status     string       `json:"status"` // transcribing → summarizing → done; error после maxAttempts
+	Attempts   int          `json:"attempts"`
+	Error      string       `json:"error"`
+	Transcript string       `json:"transcript,omitempty"`
+	Summary    string       `json:"summary,omitempty"`
+	Tracks     []trackCache `json:"tracks,omitempty"` // кэш распознанных дорожек (ретраи)
+}
+
+// sttSegment — сегмент транскрипта с таймкодом (verbose_json): время —
+// относительно начала файла.
+type sttSegment struct {
+	Start float64 `json:"start"`
+	End   float64 `json:"end"`
+	Text  string  `json:"text"`
+}
+
+// trackCache — распознанная дорожка в summary.json: ретрай пропускает файлы,
+// которые уже есть в кэше (STT — дорогая операция).
+type trackCache struct {
+	File     string       `json:"file"`
+	Segments []sttSegment `json:"segments"`
+}
+
+// trackManifest — строка {имя}.tracks.json (пишет бэкенд, см. recordings.go):
+// файл дорожки, участник и старт захвата — по нему сегменты сдвигаются к
+// общему таймлайну встречи.
+type trackManifest struct {
+	File      string `json:"file"`
+	Login     string `json:"login"`
+	Name      string `json:"name"`
+	StartedAt string `json:"started_at"`
 }
 
 func main() {
@@ -159,12 +191,13 @@ func process(mp4, sumPath string, sc sidecar, stt, llm cfg, client *http.Client)
 	sum := summary{Status: "transcribing", Attempts: 1}
 	if cur, err := readJSON[summary](sumPath); err == nil {
 		sum.Attempts = cur.Attempts + 1
+		sum.Tracks = cur.Tracks // кэш дорожек переживает ретраи
 	}
 	if err := writeSummary(sumPath, sum); err != nil {
 		return err
 	}
 
-	text, err := transcribe(client, stt, mp4)
+	text, err := transcribeRecording(mp4, &sum, sc, stt, client)
 	if err != nil {
 		return fail(sumPath, sum, err)
 	}
@@ -185,6 +218,146 @@ func process(mp4, sumPath string, sc sidecar, stt, llm cfg, client *http.Client)
 	}
 	slog.Info("secretary: summary ready", "file", base, "total_ms", time.Since(start).Milliseconds())
 	return nil
+}
+
+// transcribeRecording — STT записи. Новая запись (есть манифест дорожек,
+// ADR-0005): каждая дорожка распознаётся отдельно, сегменты сдвигаются на
+// старт дорожки относительно начала встречи и склеиваются хронологически.
+// Старая запись без манифеста — файл целиком, как раньше. Распознанное
+// пишется в sum.Tracks: ретрай не перегоняет STT для готовых дорожек.
+func transcribeRecording(mp4 string, sum *summary, sc sidecar, stt cfg, client *http.Client) (string, error) {
+	base := strings.TrimSuffix(mp4, ".mp4")
+	entries, err := readJSON[[]trackManifest](base + ".tracks.json")
+	if err != nil || len(entries) == 0 {
+		// Старая запись (манифеста нет) или дорожки не успели стартовать:
+		// микс — единственное аудио, разбираем его целиком.
+		segs, err := transcribe(client, stt, mp4)
+		if err != nil {
+			return "", err
+		}
+		return joinText(segs), nil
+	}
+
+	recStart, _ := time.Parse(time.RFC3339, sc.StartedAt)
+	cached := make(map[string][]sttSegment, len(sum.Tracks))
+	for _, t := range sum.Tracks {
+		cached[t.File] = t.Segments
+	}
+
+	// Пул sttConcurrency: дорожки независимы, но GPU STT-сервера общий.
+	sem := make(chan struct{}, sttConcurrency)
+	results := make([]trackCache, len(entries))
+	for i, e := range entries {
+		if segs, ok := cached[e.File]; ok {
+			results[i] = trackCache{File: e.File, Segments: segs}
+		}
+	}
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var errs []error
+	for i, e := range entries {
+		if results[i].File != "" {
+			continue // уже в кэше
+		}
+		wg.Add(1)
+		go func(i int, file string) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			path := filepath.Join(filepath.Dir(mp4), file)
+			if _, err := os.Stat(path); err != nil {
+				// Дорожка не появилась (egress не стартовал) — не ошибка:
+				// реплики участника просто нет, остальных это не роняет.
+				slog.Warn("secretary: track file missing, skipping", "file", file)
+				results[i] = trackCache{File: file}
+				return
+			}
+			segs, err := transcribe(client, stt, path)
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				errs = append(errs, fmt.Errorf("%s: %w", file, err))
+				return
+			}
+			results[i] = trackCache{File: file, Segments: segs}
+		}(i, e.File)
+	}
+	wg.Wait()
+	if len(errs) > 0 {
+		return "", errs[0]
+	}
+	sum.Tracks = results
+
+	// Хронологическая склейка: сдвиг сегментов на старт дорожки, общая
+	// сортировка. Метка — имя участника (из манифеста), фолбэк — логин.
+	if recStart.IsZero() {
+		// Sidecar без started_at (не бывает у новых записей): начало встречи —
+		// самая ранняя дорожка, порядок реплик всё равно сохраняется.
+		for _, e := range entries {
+			if t, err := time.Parse(time.RFC3339, e.StartedAt); err == nil && (recStart.IsZero() || t.Before(recStart)) {
+				recStart = t
+			}
+		}
+	}
+	label := make(map[string]string, len(entries))
+	offset := make(map[string]time.Duration, len(entries))
+	for _, e := range entries {
+		label[e.File] = e.Name
+		if label[e.File] == "" {
+			label[e.File] = e.Login
+		}
+		if t, err := time.Parse(time.RFC3339, e.StartedAt); err == nil {
+			offset[e.File] = t.Sub(recStart)
+		}
+	}
+	type line struct {
+		at   time.Duration
+		text string
+	}
+	var lines []line
+	for _, t := range sum.Tracks {
+		for _, s := range t.Segments {
+			if s.Text == "" {
+				continue
+			}
+			at := offset[t.File] + time.Duration(s.Start*float64(time.Second))
+			if at < 0 {
+				at = 0
+			}
+			lines = append(lines, line{at, fmt.Sprintf("[%s] %s: %s", mmss(at), label[t.File], s.Text)})
+		}
+	}
+	sort.SliceStable(lines, func(i, j int) bool { return lines[i].at < lines[j].at })
+	text := make([]string, len(lines))
+	for i, l := range lines {
+		text[i] = l.text
+	}
+	joined := strings.Join(text, "\n")
+	if joined == "" {
+		return "", errors.New("пустой транскрипт")
+	}
+	return joined, nil
+}
+
+// mmss — [ММ:СС] от начала встречи для метки реплики.
+func mmss(at time.Duration) string {
+	s := int(at.Seconds())
+	return fmt.Sprintf("%02d:%02d", s/60, s%60)
+}
+
+// joinText — текст транскрипта из сегментов (старый путь: целый файл).
+func joinText(segs []sttSegment) string {
+	var b strings.Builder
+	for _, s := range segs {
+		if s.Text == "" {
+			continue
+		}
+		if b.Len() > 0 {
+			b.WriteByte(' ')
+		}
+		b.WriteString(s.Text)
+	}
+	return b.String()
 }
 
 func fail(sumPath string, sum summary, err error) error {
@@ -241,30 +414,36 @@ func (c cfg) endpoint(method string) string {
 }
 
 // transcribe — POST {base}/v1/audio/transcriptions (multipart, как у OpenAI).
-func transcribe(client *http.Client, c cfg, path string) (string, error) {
+// response_format=verbose_json: сегменты с таймкодами нужны для склейки
+// дорожек по общему таймлайну (ADR-0005), враппер их отдаёт. Файл целиком
+// или дорожка — здесь без разницы.
+func transcribe(client *http.Client, c cfg, path string) ([]sttSegment, error) {
 	var buf bytes.Buffer
 	w := multipart.NewWriter(&buf)
 	fw, err := w.CreateFormFile("file", filepath.Base(path))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	f, err := os.Open(path)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if _, err := io.Copy(fw, f); err != nil {
 		f.Close()
-		return "", err
+		return nil, err
 	}
 	f.Close()
 	if err := w.WriteField("model", c.model); err != nil {
-		return "", err
+		return nil, err
+	}
+	if err := w.WriteField("response_format", "verbose_json"); err != nil {
+		return nil, err
 	}
 	w.Close()
 
 	req, err := http.NewRequest(http.MethodPost, c.endpoint("/audio/transcriptions"), &buf)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	req.Header.Set("Content-Type", w.FormDataContentType())
 	if c.key != "" {
@@ -272,23 +451,31 @@ func transcribe(client *http.Client, c cfg, path string) (string, error) {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return "", fmt.Errorf("STT %s: %s", resp.Status, strings.TrimSpace(string(b)))
+		return nil, fmt.Errorf("STT %s: %s", resp.Status, strings.TrimSpace(string(b)))
 	}
 	var out struct {
-		Text string `json:"text"`
+		Text     string       `json:"text"`
+		Segments []sttSegment `json:"segments"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return "", err
+		return nil, err
 	}
 	if out.Text == "" {
-		return "", errors.New("STT вернул пустой транскрипт")
+		return nil, errors.New("STT вернул пустой транскрипт")
 	}
-	return out.Text, nil
+	for i := range out.Segments {
+		out.Segments[i].Text = strings.TrimSpace(out.Segments[i].Text)
+	}
+	if len(out.Segments) == 0 {
+		// Упрощённый ответ без сегментов — один сегмент на весь текст.
+		out.Segments = []sttSegment{{Text: out.Text}}
+	}
+	return out.Segments, nil
 }
 
 // summarize — POST {base}/v1/chat/completions. Системный промпт — из файла

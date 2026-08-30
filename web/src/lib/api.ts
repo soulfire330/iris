@@ -111,6 +111,8 @@ export interface RecordingFile {
   ai_status: string;
   ai_error: string;
   summary_text: string;
+  // Размеченный транскрипт («[00:05] Имя: реплика»), пуст, пока сводка не готова.
+  transcript?: string;
 }
 
 export async function startRecording(login: string, room: string): Promise<void> {

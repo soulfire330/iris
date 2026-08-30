@@ -87,7 +87,8 @@ restart backend`.
     "summary": true,
     "ai_status": "done",
     "ai_error": "",
-    "summary_text": "**Тема:** ..."
+    "summary_text": "**Тема:** ...",
+    "transcript": "[00:00] Иван: ...\n[00:05] Пётр: ..."
   }
 ]
 ```
@@ -103,6 +104,7 @@ restart backend`.
 | `ai_status` | `""` \| `transcribing` \| `summarizing` \| `done` \| `error` |
 | `ai_error` | текст ошибки разбора (только при `ai_status: error`) |
 | `summary_text` | текст сводки (пусто, пока не готова) |
+| `transcript` | размеченный транскрипт `[ММ:СС] Имя: реплика` (пусто, пока не готов; старые записи — без меток) |
 
 Идущая запись в списке не показывается (mp4 ещё пишется).
 

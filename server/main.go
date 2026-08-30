@@ -38,6 +38,10 @@ func main() {
 		activeRec: map[string]string{},
 	}
 
+	// Догон дорожек участников (ADR-0005): пока запись идёт, опоздавшие
+	// получают свой TrackEgress. Фоновый цикл, не блокирует API.
+	go app.trackPoller()
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ok"))

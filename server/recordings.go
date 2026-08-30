@@ -33,6 +33,21 @@ import (
 // обязаны совпадать у egress (пишет) и бэкенда (список/скачивание).
 const egressOutDir = "/out/recordings"
 
+// Дорожки участников (эпик «Секретарь», ADR-0005): рядом с миксом egress
+// пишет по TrackEgress на каждого участника с аудио — {имя}.tracks.json
+// описывает их для воркер-секретаря (файл, участник, сдвиг времени). Манифест
+// — источник правды: переживает рестарт бэкенда, дедуп по track_sid.
+const trackPollInterval = 10 * time.Second // частота догона дорожек опоздавших
+
+// trackManifest — строка манифеста дорожек.
+type trackManifest struct {
+	File      string `json:"file"`       // имя файла дорожки рядом с записью
+	Login     string `json:"login"`
+	Name      string `json:"name"`       // отображаемое имя (Employee); пусто — секретарь возьмёт логин
+	StartedAt string `json:"started_at"` // RFC3339 — старт захвата (egress)
+	TrackSid  string `json:"track_sid"`  // дедуп дорожек после рестарта бэкенда
+}
+
 // Метаданные комнаты при активной записи; пустая строка — нет. rec_started_at
 // (RFC3339, серверное время) — старт записи: фронт показывает его в живой
 // строке «Сейчас, 11:17 · 49 мин» и считает длительность от него. rec_name —
@@ -71,16 +86,31 @@ func (a *App) recordingsDir() string {
 	return filepath.Join(a.cfg.Server.DataDir, "recordings")
 }
 
-// activeRecording — активный egress комнаты или nil.
-func (a *App) activeRecording(ctx context.Context, room string) (*livekit.EgressInfo, error) {
+// activeEgresses — все активные egress комнаты: микс + дорожки участников.
+func (a *App) activeEgresses(ctx context.Context, room string) ([]*livekit.EgressInfo, error) {
 	resp, err := a.egress.ListEgress(ctx, &livekit.ListEgressRequest{RoomName: room, Active: true})
 	if err != nil {
 		return nil, err
 	}
-	if len(resp.Items) == 0 {
+	return resp.Items, nil
+}
+
+// activeRecording — активный egress комнаты или nil. Приоритет — микс
+// (RoomComposite): дорожки — спутники, «запись идёт» определяется по нему.
+func (a *App) activeRecording(ctx context.Context, room string) (*livekit.EgressInfo, error) {
+	items, err := a.activeEgresses(ctx, room)
+	if err != nil {
+		return nil, err
+	}
+	if len(items) == 0 {
 		return nil, nil
 	}
-	return resp.Items[0], nil
+	for _, item := range items {
+		if _, ok := item.Request.(*livekit.EgressInfo_RoomComposite); ok {
+			return item, nil
+		}
+	}
+	return items[0], nil
 }
 
 // recordingName — имя файла «дата-время_логин.mp4», свободное в каталоге.
@@ -192,8 +222,163 @@ func (a *App) handleRecordingStart(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Дорожки участников: пустой манифест (секретарь отличает новую запись от
+	// старой по его наличию) + стартовый снимок. Опоздавших догонит trackPoller.
+	base := strings.TrimSuffix(name, ".mp4")
+	if err := writeFileJSON(filepath.Join(dir, base+".tracks.json"), []trackManifest{}); err != nil {
+		slog.Error("recording: tracks manifest write failed", "name", name, "err", err)
+	}
+	if resp, err := a.livekit.ListParticipants(ctx, &livekit.ListParticipantsRequest{Room: room}); err == nil {
+		a.startParticipantTracks(ctx, room, base, resp.Participants)
+	} else {
+		slog.Warn("recording: participants snapshot failed", "room", room, "err", err)
+	}
+
 	slog.Info("recording started", "room", room, "login", req.Login, "name", name, "egress_id", info.EgressId)
 	writeJSON(w, http.StatusOK, map[string]string{"egress_id": info.EgressId, "name": name})
+}
+
+// startParticipantTracks — запускает TrackEgress на аудио-дорожки участников,
+// которых ещё нет в манифесте (старт записи и опоздавшие). Имя участника — из
+// Employee-маппинга: секретарь подставит его в транскрипт вместо логина.
+// Манифест — источник правды, память не нужна: дедуп по track_sid в файле
+// переживает рестарты бэкенда.
+func (a *App) startParticipantTracks(ctx context.Context, room, base string, participants []*livekit.ParticipantInfo) {
+	dir := a.roomDir(room)
+	manifestPath := filepath.Join(dir, base+".tracks.json")
+	m := readTracks(manifestPath)
+	have := make(map[string]bool, len(m))
+	for _, e := range m {
+		have[e.TrackSid] = true
+	}
+	for _, p := range participants {
+		if p.Kind == livekit.ParticipantInfo_EGRESS {
+			continue // egress-бот записи людям не участник
+		}
+		for _, t := range p.Tracks {
+			if t.Type != livekit.TrackType_AUDIO || have[t.Sid] {
+				continue
+			}
+			entry, err := a.startTrackEgress(ctx, room, base, p.Identity, t.Sid, m)
+			if err != nil {
+				slog.Warn("recording: track egress failed", "room", room, "login", p.Identity, "err", err)
+				continue
+			}
+			have[t.Sid] = true
+			m = append(m, entry)
+		}
+	}
+	if len(m) > 0 {
+		writeFileJSON(manifestPath, m)
+	}
+}
+
+// startTrackEgress — одна дорожка участника: {base}-{login}.ogg (повторный
+// вход — -2.ogg и т.д.), старт захвата — из ответа egress (по нему секретарь
+// сдвинет сегменты к общему таймлайну встречи).
+func (a *App) startTrackEgress(ctx context.Context, room, base, login, trackSid string, m []trackManifest) (trackManifest, error) {
+	dir := a.roomDir(room)
+	name := base + "-" + login + ".ogg"
+	for i := 2; ; i++ {
+		taken := false
+		for _, e := range m {
+			if e.File == name {
+				taken = true
+				break
+			}
+		}
+		if !taken {
+			if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
+				taken = true
+			}
+		}
+		if !taken {
+			break
+		}
+		name = fmt.Sprintf("%s-%s-%d.ogg", base, login, i)
+	}
+	info, err := a.egress.StartTrackEgress(ctx, &livekit.TrackEgressRequest{
+		RoomName: room,
+		TrackId:  trackSid,
+		Output: &livekit.TrackEgressRequest_File{File: &livekit.DirectFileOutput{
+			Filepath:        filepath.Join(egressOutDir, room, name),
+			DisableManifest: true, // как у микса: манифест дорожек — свой
+		}},
+	})
+	if err != nil {
+		return trackManifest{}, err
+	}
+	entry := trackManifest{
+		File:      name,
+		Login:     login,
+		StartedAt: time.Unix(0, info.StartedAt).Format(time.RFC3339), // наносекунды
+		TrackSid:  trackSid,
+	}
+	if emp := a.cfg.Employee(login); emp != nil {
+		entry.Name = emp.Name
+	}
+	return entry, nil
+}
+
+// trackPoller — фоновый догон дорожек: пока запись комнаты активна, каждый
+// участник с аудио-треком должен быть в манифесте. Паттерн — как у секретаря:
+// сон + проход, без событий и вебхуков.
+func (a *App) trackPoller() {
+	for {
+		time.Sleep(trackPollInterval)
+		a.ensureTracks(context.Background())
+	}
+}
+
+// ensureTracks — один проход: для комнат с идущей записью (activeRec) — список
+// участников и старт дорожек новым. recMu — чтобы не пересечься со стартом/
+// стопом записи (манифест пишется в обоих местах).
+func (a *App) ensureTracks(ctx context.Context) {
+	a.recMu.Lock()
+	defer a.recMu.Unlock()
+	if len(a.activeRec) == 0 {
+		return
+	}
+	for room, name := range a.activeRec {
+		info, err := a.activeRecording(ctx, room)
+		if err != nil {
+			slog.Debug("tracks: livekit unavailable", "room", room, "err", err)
+			continue
+		}
+		if info == nil {
+			continue // запись уже остановилась (стоп или комната опустела)
+		}
+		resp, err := a.livekit.ListParticipants(ctx, &livekit.ListParticipantsRequest{Room: room})
+		if err != nil {
+			slog.Debug("tracks: participants unavailable", "room", room, "err", err)
+			continue
+		}
+		a.startParticipantTracks(ctx, room, strings.TrimSuffix(name, ".mp4"), resp.Participants)
+	}
+}
+
+// readTracks — манифест дорожек; нет файла — пустой список.
+func readTracks(path string) []trackManifest {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	var m []trackManifest
+	_ = json.Unmarshal(b, &m)
+	return m
+}
+
+// writeFileJSON — атомарная запись JSON-файла (как writeSummary у секретаря).
+func writeFileJSON(path string, v any) error {
+	b, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return err
+	}
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, b, 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
 }
 
 // handleRecordingStop — POST /api/recording/stop. Само-заживление: активного
@@ -215,13 +400,13 @@ func (a *App) handleRecordingStop(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = json.NewDecoder(r.Body).Decode(&req)
 
-	active, err := a.activeRecording(ctx, room)
+	items, err := a.activeEgresses(ctx, room)
 	if err != nil {
 		slog.Error("recording: livekit unavailable", "op", "stop", "room", room, "err", err)
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "livekit недоступен"})
 		return
 	}
-	if active == nil {
+	if len(items) == 0 {
 		delete(a.activeRec, room)
 		a.clearRecordingMeta(ctx, room)
 		slog.Info("recording was not active", "room", room, "login", req.Login)
@@ -229,12 +414,29 @@ func (a *App) handleRecordingStop(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	info, err := a.egress.StopEgress(ctx, &livekit.StopEgressRequest{EgressId: active.EgressId})
-	if err != nil {
-		slog.Error("recording: failed to stop", "egress_id", active.EgressId, "err", err)
+	// Стоп всех активных egress комнаты: микс и дорожки участников (TrackEgress
+	// живёт, пока жив трек — без явного стопа дорожки висели бы до выхода
+	// участников из комнаты).
+	var comp *livekit.EgressInfo
+	stopFailed := 0
+	for _, e := range items {
+		if _, ok := e.Request.(*livekit.EgressInfo_RoomComposite); ok {
+			comp = e
+		}
+		if _, err := a.egress.StopEgress(ctx, &livekit.StopEgressRequest{EgressId: e.EgressId}); err != nil {
+			stopFailed++
+			slog.Warn("recording: egress stop failed", "egress_id", e.EgressId, "err", err)
+		}
+	}
+	if stopFailed == len(items) {
+		slog.Error("recording: failed to stop all egresses", "room", room, "n", len(items))
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "не удалось остановить запись"})
 		return
 	}
+	if comp == nil {
+		comp = items[0] // фолбэк: дорожки без микса (не бывает, но пусть живёт)
+	}
+	info := comp
 
 	// Снимок участников на стопе (решение Q8) — «краткий список» в UI. Сам
 	// egress ещё числится в комнате, пока не вышел, — отбрасываем его.
@@ -373,6 +575,8 @@ type recFile struct {
 	AIStatus    string `json:"ai_status"`
 	AIError     string `json:"ai_error"`
 	SummaryText string `json:"summary_text"`
+	// Transcript — размеченный транскрипт («[00:05] Имя: реплика»), ADR-0005.
+	Transcript string `json:"transcript,omitempty"`
 }
 
 // dateRange — date_from/date_to из query: YYYY-MM-DD (весь день) или RFC3339
@@ -496,12 +700,13 @@ func (a *App) handleRecordingsList(w http.ResponseWriter, r *http.Request) {
 		// писатель, sidecar бэкенд не мутирует параллельно.
 		if b, err := os.ReadFile(filepath.Join(dir, strings.TrimSuffix(name, ".mp4")+".summary.json")); err == nil {
 			var s struct {
-				Status  string `json:"status"`
-				Error   string `json:"error"`
-				Summary string `json:"summary"`
+				Status     string `json:"status"`
+				Error      string `json:"error"`
+				Summary    string `json:"summary"`
+				Transcript string `json:"transcript"`
 			}
 			if json.Unmarshal(b, &s) == nil {
-				item.AIStatus, item.AIError, item.SummaryText = s.Status, s.Error, s.Summary
+				item.AIStatus, item.AIError, item.SummaryText, item.Transcript = s.Status, s.Error, s.Summary, s.Transcript
 			}
 		}
 		out = append(out, item)
