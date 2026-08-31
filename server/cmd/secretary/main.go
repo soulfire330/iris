@@ -466,7 +466,11 @@ func transcribe(client *http.Client, c cfg, path string) ([]sttSegment, error) {
 		return nil, err
 	}
 	if out.Text == "" {
-		return nil, errors.New("STT вернул пустой транскрипт")
+		// Тихая дорожка (молчание/mute): речи нет, в сводку не вносит ничего.
+		// Пустые сегменты не роняют батч остальных дорожек (was: error →
+		// 3 ретрая подряд пере-распознавали всё заново и запись умирала).
+		slog.Warn("secretary: silent track, skipping", "file", filepath.Base(path))
+		return nil, nil
 	}
 	for i := range out.Segments {
 		out.Segments[i].Text = strings.TrimSpace(out.Segments[i].Text)
