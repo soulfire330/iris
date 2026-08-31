@@ -353,7 +353,9 @@ export function SummaryBlock({
           {title}
           <div className={cn("mt-1 leading-relaxed", large ? "text-sm" : "text-xs")}>
             {status === "error" ? (
-              <span className="text-warn">не удалась: {error}</span>
+              // Детали ошибки не показываем: чаще всего это сеть/сервис STT —
+              // пользователю они бесполезны, секретарь повторит запись сам.
+              <span className="text-warn">Не удалась, попробуем позднее…</span>
             ) : (
               <span className="animate-breathe text-neutral-500">{waitingText}</span>
             )}
