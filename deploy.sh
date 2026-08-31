@@ -1,15 +1,18 @@
 #!/usr/bin/env bash
-# Продакшн-деплой: домен из deploy/Caddyfile, TLS — Let's Encrypt (Caddy
-# выпускает сам при первом обращении). При первом запуске генерирует
-# секреты: ключи livekit (если остались dev) и PUBLIC_API_KEY в .env.
+# Продакшн-деплой: поднимает стек — `docker compose up -d --build` (фронт
+# собирается в Docker-образе). Reverse proxy, TLS и DNS этот скрипт не трогает:
+# они настраиваются один раз тем, кто деплоит (см. docs/DEPLOY.md).
 #
-# Перед запуском: DNS (hub.<домен> + turn.<домен> → сервер), домен в
-# deploy/Caddyfile, сотрудники в config.yaml, STT/LLM ключи в .env.
+# При первом запуске генерирует секреты: ключи livekit (если остались dev)
+# и PUBLIC_API_KEY в .env.
 #
-# Использование: bash deploy/deploy.sh
+# Перед запуском: сотрудники в config.yaml, STT/LLM ключи в .env,
+# reverse proxy настроен на апстримы 127.0.0.1:8090 и /rtc → 127.0.0.1:7880.
+#
+# Использование: bash deploy.sh
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
 command -v docker >/dev/null || { echo "Нет docker" >&2; exit 1; }
@@ -18,15 +21,6 @@ command -v openssl >/dev/null || { echo "Нет openssl" >&2; exit 1; }
   echo "Нет config.yaml: cp config.example.yaml config.yaml, впиши сотрудников (пароль: scripts/hashpass.sh 'пароль')" >&2
   exit 1
 }
-
-# Домен из первого сайт-блока Caddyfile.
-DOMAIN=$(grep -m1 -oP '^[a-zA-Z0-9.-]+(?= \{)' deploy/Caddyfile || true)
-case "$DOMAIN" in
-  *.example.com|"")
-    echo "Замени example.com на свой домен в deploy/Caddyfile (и добавь A-записи hub./turn. → сервер)" >&2
-    exit 1
-    ;;
-esac
 
 # Секреты livekit: dev-ключи меняем при первом деплое (все три файла синхронно).
 if grep -q '^  devkey:' deploy/livekit.yaml; then
@@ -51,9 +45,10 @@ if ! grep -q '^PUBLIC_API_KEY=.\+' .env; then
   echo "Сгенерирован PUBLIC_API_KEY (в .env)."
 fi
 
-docker compose -f deploy/docker-compose.yml up -d --build
+docker compose up -d --build
 
 echo
-echo "Готово: https://$DOMAIN (сертификат выпустит Caddy при первом обращении)"
-echo "Проверка: curl -H \"X-API-Key: \$(grep PUBLIC_API_KEY .env | cut -d= -f2)\" https://$DOMAIN/api/public/status"
-echo "TURN: раскомментируй блок turn: в deploy/livekit.yaml после выпуска серта (см. docs/DEPLOY.md)."
+echo "Готово: стек поднят. HTTPS отдаёт твой reverse proxy (см. docs/DEPLOY.md):"
+echo "  /rtc* → 127.0.0.1:7880 (livekit), остальное → 127.0.0.1:8090 (backend)"
+echo "Проверка: curl -H \"X-API-Key: \$(grep PUBLIC_API_KEY .env | cut -d= -f2)\" https://hub.<домен>/api/public/status"
+echo "TURN: положи серт в deploy/certs/ и раскомментируй блок turn: в deploy/livekit.yaml."

@@ -18,15 +18,15 @@
 | Комната | Одна постоянная (`office`), закрывается при опустении (auto-dispose). Вход = авто-подключение. |
 | Запись | Серверная, LiveKit Egress, audio-only RoomComposite → MP4 в volume (ADR-0002). Одна запись одновременно, кнопка глобальная. Статус клиентам — метаданные комнаты LiveKit (`roomMetadataChanged`); участники на стопе — sidecar-json у файла; источник правды — активные egress в LiveKit. Бип на старт/стоп. |
 | AI-сводки | Кнопка AI видна при идущей записи и заказывает сводку: флаг `summary` в sidecar записи (ADR-0004). Отдельный воркер-секретарь (`server/cmd/secretary`) разбирает такие записи STT → LLM и кладёт `{имя}.summary.json`; секреты — `.env`, не config.yaml. Сводка — в табе «Сводки». |
-| TLS | Публичный домен, Let's Encrypt; Caddy терминирует HTTPS для веба и wss LiveKit (ADR-0003). |
+| TLS | Публичный домен, Let's Encrypt; reverse proxy деплоера терминирует HTTPS для веба и wss LiveKit (ADR-0003). |
 | TURN | Встроенный в LiveKit, обязателен (есть удалённые участники). TURN/TLS на поддомене `turn.<домен>`, порты 3478/UDP + 5349/TCP. |
-| Деплой | Docker compose на одном корпсервере. `livekit-server` и `caddy` — host network. |
+| Деплой | Один `docker-compose.yml` в корне; reverse proxy — ответственность деплоера. `livekit-server`, backend, egress — host network. |
 | UI | Русский. React + Vite + TS + shadcn/ui + livekit-client + boringavatars. |
 
 ## 2. Архитектура
 
 ```
-Браузер ──HTTPS──► Caddy ──► /api/* ──► backend (Go, :8090)
+Браузер ──HTTPS──► reverse proxy ──► /api/* ──► backend (Go, :8090)
                          └──► wss /  ──► livekit-server (:7880)
                                           │  ├──► valkey (:6379)  ← только очередь Egress
                                           │  └──► livekit-egress ─► data/recordings/*.mp4
@@ -36,17 +36,17 @@ secretary ──► data/recordings/ (mp4 + sidecar с флагом summary) ─
                 └─► пишет {имя}.summary.json ← backend отдаёт в /api/recordings
 ```
 
-- `backend` раздаёт статику фронтенда (одна точка входа для Caddy).
+- `backend` раздаёт статику фронтенда (одна точка входа для reverse proxy).
 - `secretary` (воркер AI-сводок, `server/cmd/secretary`): сканирует записи с флагом `summary`, STT → LLM, результат в `{имя}.summary.json` рядом с mp4. Секреты — `.env` (env_file), config.yaml не читает.
 - `livekit-server` на host network (доки LiveKit рекомендуют для производительности UDP).
-- Volume `recordings` (named docker volume, `office-recordings`): общий для egress, backend и secretary. Права чинит одноразовый init из образа самого egress (root'ом egress запускать нельзя — entrypoint поднимает pulseaudio, тот под root падает). В dev записи — `data/recordings/` на хосте (`deploy/docker-compose.dev.yml`, init делает каталог 777: туда пишут и egress, и хост-бэкенд).
+- Volume `recordings` (named docker volume, `office-recordings`): общий для egress, backend и secretary. Права чинит одноразовый init из образа самого egress (root'ом egress запускать нельзя — entrypoint поднимает pulseaudio, тот под root падает). В dev записи — `data/recordings/` на хосте (`docker-compose.dev.yml`, init делает каталог 777: туда пишут и egress, и хост-бэкенд).
 - Конфиг читается при старте; изменение → `docker compose restart backend`.
 
 ### Сервисы compose
 
 | Сервис | Образ | Роль |
 |---|---|---|
-| caddy | caddy | TLS, роутинг: веб/API → backend, wss → livekit, серт для TURN в файл |
+| reverse proxy | не входит в compose | TLS, роутинг: веб/API → backend, wss → livekit (настраивает деплоер, см. docs/DEPLOY.md; серт TURN — в deploy/certs/) |
 | livekit-server | livekit/livekit-server | WebRTC-медиасервер + встроенный TURN |
 | redis | valkey/valkey:7.2-alpine | Очередь заданий Egress — дроп-ин Redis 7.2 (это не «БД продукта») |
 | livekit-egress | livekit/egress | Запись комнаты в MP4 |
@@ -57,8 +57,8 @@ secretary ──► data/recordings/ (mp4 + sidecar с флагом summary) ─
 
 | Порт | Кто | Куда |
 |---|---|---|
-| 80/443/tcp | Caddy | веб, wss |
-| 7880/tcp | livekit | сигналинг (за Caddy) |
+| 80/443/tcp | reverse proxy | веб, wss |
+| 7880/tcp | livekit | сигналинг (за proxy) |
 | 7881/tcp, 50000–50100/udp | livekit | WebRTC-медиа |
 | 3478/udp, 5349/tcp | livekit | TURN (встроенный) |
 | 8090/tcp | backend | только внутри compose |
@@ -149,14 +149,14 @@ LLM_MODEL=…
 
 ### Фаза 4 — Продакшн-развёртывание на корпсервере
 - [ ] DNS: `hub.<домен>` + `turn.<домен>` → сервер.
-- [ ] Серты Let's Encrypt (HTTP-01 для hub; TURN-серт — Caddy в общий volume certs, livekit читает `cert_file`/`key_file`).
+- [ ] Серты Let's Encrypt (HTTP-01 для hub; TURN-серт — деплоер кладёт .crt/.key в `deploy/certs/`, livekit читает `cert_file`/`key_file`).
 - [ ] Файрвол: порты из таблицы §3.
 - [ ] Проверка TURN из внешней сети (удалённый участник за NAT слышит всех).
 - [ ] Инструкция: добавление сотрудника = правка config.yaml + `hashpass` + restart backend.
 
 ## 8. Открытые детали реализации (не решения)
 
-- Выдача TURN-серта: два hostname по HTTP-01 (серты из certmagic-хранилища Caddy в файл для LiveKit) либо wildcard DNS-01 — выбрать на Фазе 4.
+- Выдача TURN-серта: деплоер получает серт любым способом (свой reverse proxy, отдельный ACME-клиент, свой CA) и кладёт в `deploy/certs/` — решено с ADR-0003.
 - `empty_timeout` комнаты — подобрать дефолт LiveKit.
 - Удаление/ротация записей — не делаем, пока не попросят.
 

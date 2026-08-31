@@ -7,9 +7,10 @@
 ## Структура
 
 ```
-deploy/            docker compose, конфиги LiveKit/Caddy/Egress
+deploy/            конфиги LiveKit/Egress/Secretary (livekit.yaml, egress.yaml, secretary-prompt.md, certs/ — TURN-серты)
 server/            Go-бэкенд (+ cmd/hashpass, cmd/secretary — воркер AI-сводок)
 web/               React-фронт (Vite)
+docker-compose.yml продакшн-стек: docker compose up -d --build (или ./deploy.sh)
 config.example.yaml шаблон конфига → скопируй в config.yaml (в .gitignore)
 .env.example       шаблон секретов AI-сводок → скопируй в .env (в .gitignore)
 data/              записи в dev (в проде — named volume recordings)
@@ -37,9 +38,9 @@ cd .. && ./scripts/dev.sh            # инфраструктура + бэкен
 | `./scripts/web.sh build` | продакшн-сборка фронта в web/dist |
 | `./scripts/hashpass.sh 'пароль'` | bcrypt-хэш для config.yaml |
 | `./scripts/secretary.sh` | воркер AI-сводок локально (нужен `.env` с STT/LLM) |
-| `./scripts/stack.sh up` / `down` | полный compose-стек (Caddy + бэкенд в контейнере) — для прода |
+| `./deploy.sh` | продакшн-деплой: секреты при первом запуске + `docker compose up -d --build`; reverse proxy — ваша забота (docs/DEPLOY.md) |
 
-В dev микрофон работает на `localhost` (secure context), LiveKit доступен напрямую: `ws://localhost:7880`. Caddy не нужен до Фазы 4.
+В dev микрофон работает на `localhost` (secure context), LiveKit доступен напрямую: `ws://localhost:7880`. Reverse proxy в проекте нет: TLS/HTTPS — ответственность того, кто деплоит (см. Продакшн).
 
 ## Доступ с другого ПК (LAN)
 
@@ -78,4 +79,4 @@ LLM_MODEL=…
 
 Подробная инструкция (домены, порты, TLS, TURN, файрвол): [docs/DEPLOY.md](docs/DEPLOY.md).
 
-Коротко: DNS `hub.<домен>` + `turn.<домен>` → сервер, домен в `deploy/Caddyfile`, сотрудники в `config.yaml`, ключи STT/LLM в `.env`, затем `bash deploy/deploy.sh` (фронт собирается в Docker-образе, сгенерирует секреты при первом запуске, поднимет стек). Нет домена — `bash deploy/deploy-self-signed.sh` (HTTPS по IP с self-signed сертификатом, только LAN). Снаружи открыты 80/443/tcp, 50000–50100/udp (+ TURN 3478/udp, 5349/tcp); 8090/7880/6379 наружу не выставляются.
+Коротко: reverse proxy на сервере настроен на апстримы `127.0.0.1:8090` (сайт/API) и `/rtc*` → `127.0.0.1:7880` (LiveKit wss), сотрудники в `config.yaml`, ключи STT/LLM в `.env`, затем `bash deploy.sh` (фронт собирается в Docker-образе, сгенерирует секреты при первом запуске, поднимет стек). HTTPS/TLS/домены — забота того, кто деплоит; без домена HTTPS отдаёт твой proxy с self-signed сертом (только LAN, без TURN). Снаружи открыты 80/443/tcp (proxy), 50000–50100/udp (+ TURN 3478/udp, 5349/tcp); 8090/7880/6379 наружу не выставляются.

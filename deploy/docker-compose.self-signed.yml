@@ -1,7 +1,0 @@
-# Self-signed деплой (LAN, без домена): подменяет Caddyfile на сгенерированный
-# deploy-self-signed.sh (Caddyfile.self-signed с https://<IP> и tls internal).
-# Использование: docker compose -f docker-compose.yml -f docker-compose.self-signed.yml up -d
-services:
-  caddy:
-    volumes:
-      - ./Caddyfile.self-signed:/etc/caddy/Caddyfile:ro

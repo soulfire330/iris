@@ -14,7 +14,7 @@ services:
     restart: unless-stopped
     network_mode: host
     volumes:
-      - ./livekit.yaml:/etc/livekit.yaml:ro
+      - ./deploy/livekit.yaml:/etc/livekit.yaml:ro
     command: ["--config", "/etc/livekit.yaml"]
     depends_on:
       - redis
@@ -33,7 +33,7 @@ services:
     user: "0:0"
     entrypoint: ["sh", "-c", "mkdir -p /out/recordings && chmod 777 /out/recordings"]
     volumes:
-      - ../data/recordings:/out/recordings
+      - ./data/recordings:/out/recordings
 
   livekit-egress:
     image: livekit/egress:latest
@@ -44,8 +44,8 @@ services:
     environment:
       EGRESS_CONFIG_FILE: /etc/egress.yaml
     volumes:
-      - ./egress.yaml:/etc/egress.yaml:ro
-      - ../data/recordings:/out/recordings
+      - ./deploy/egress.yaml:/etc/egress.yaml:ro
+      - ./data/recordings:/out/recordings
     depends_on:
       livekit-server:
         condition: service_started

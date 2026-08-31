@@ -21,14 +21,14 @@ room:
   auto_create: true
   empty_timeout: 120
 
-# TURN — Фаза 4: нужен домен и сертификат (выпускается Caddy, см. Caddyfile).
-# Раскомментировать после получения серта. Путь — фактическое расположение в
-# volume caddy_data: Caddy кладёт серт в подкаталог issuer'а
-# (acme-v02.api.letsencrypt.org-directory) — проверь после первого выпуска.
+# TURN — нужен домен и сертификат. Сертификат достаёт деплоер (из своего
+# reverse proxy / своего CA / ACME) и кладёт в deploy/certs/ — каталог
+# смонтирован в контейнер как /certs (см. docker-compose.yml).
+# Раскомментировать после готовности серта и перезапустить стек.
 # turn:
 #   enabled: true
 #   domain: turn.example.com
-#   cert_file: /caddy-data/caddy/certificates/acme-v02.api.letsencrypt.org-directory/turn.example.com/turn.example.com.crt
-#   key_file: /caddy-data/caddy/certificates/acme-v02.api.letsencrypt.org-directory/turn.example.com/turn.example.com.key
+#   cert_file: /certs/turn.example.com.crt
+#   key_file: /certs/turn.example.com.key
 #   tls_port: 5349
 #   udp_port: 3478

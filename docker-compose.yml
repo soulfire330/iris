@@ -1,26 +1,24 @@
-services:
-  # host network: Caddy должен достать livekit (тоже host network — UDP-медиа
-  # без docker-proxy) и backend. В host-неймспейсе нет DNS compose-сети,
-  # поэтому оба апстрима — loopback (127.0.0.1, см. Caddyfile).
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    network_mode: host
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-    depends_on:
-      - backend
+# Продакшн-стек: backend + secretary + LiveKit + Egress + Redis.
+# Reverse proxy, TLS, домены — ответственность того, кто деплоит (см.
+# docs/DEPLOY.md): proxy отдаёт https://hub.<домен>, /rtc* → 127.0.0.1:7880,
+# остальное → 127.0.0.1:8090. Proxy должен работать на хосте или на
+# host network: сервисы слушают loopback.
+#
+# host network: LiveKit сам слушает UDP/TCP порты на хосте (доки рекомендуют),
+# backend/egress ходят на него по loopback (localhost:7880), Caddy-нет —
+# апстримы те же.
 
+services:
   # host network: LiveKit сам слушает UDP/TCP порты на хосте (доки рекомендуют)
   livekit-server:
     image: livekit/livekit-server:latest
     restart: unless-stopped
     network_mode: host
     volumes:
-      - ./livekit.yaml:/etc/livekit.yaml:ro
-      # серт TURN читаем из хранилища сертификатов Caddy (Фаза 4)
-      - caddy_data:/caddy-data:ro
+      - ./deploy/livekit.yaml:/etc/livekit.yaml:ro
+      # Сертификаты TURN — ответственность деплоера: кладёт .crt/.key в
+      # deploy/certs/ и раскомментирует блок turn: в livekit.yaml (/certs/...).
+      - ./deploy/certs:/certs:ro
     command: ["--config", "/etc/livekit.yaml"]
     logging: &log-rotate
       driver: json-file
@@ -32,7 +30,8 @@ services:
 
   # Valkey 7.2 — дроп-ин Redis (та же очередь Egress для livekit/egress,
   # протокол совместим, данных не хранит). Имя сервиса оставлено redis:
-  # его никто не дёргает по имени (livekit/egress ходят на localhost:6379).
+  # livekit/egress на host network ходят на localhost:6379 (порт опубликован
+  # на loopback).
   redis:
     image: valkey/valkey:7.2-alpine
     restart: unless-stopped
@@ -62,7 +61,7 @@ services:
     environment:
       EGRESS_CONFIG_FILE: /etc/egress.yaml
     volumes:
-      - ./egress.yaml:/etc/egress.yaml:ro
+      - ./deploy/egress.yaml:/etc/egress.yaml:ro
       - recordings:/out/recordings
     logging: *log-rotate
     depends_on:
@@ -75,10 +74,10 @@ services:
 
   # host network: бэкенд ходит на livekit через localhost (в bridge-сети
   # localhost — это сам контейнер, и 7880 недоступен). listen в конфиге —
-  # 127.0.0.1:8090, наружу 8090 не торчит (Caddy ходит по loopback).
+  # 127.0.0.1:8090, наружу 8090 не торчит (reverse proxy ходит по loopback).
   backend:
     build:
-      context: ..
+      context: .
       dockerfile: server/Dockerfile
       # Сеть хоста: у bun-стейджа нет fallback на IPv4, а в bridge-сети
       # buildkit IPv6 недоступен — bun install висит (npm резолвится в AAAA).
@@ -90,11 +89,11 @@ services:
       # /etc/office, чтобы он резолвился в смонтированный каталог.
       # web-dist — в образе (см. server/Dockerfile), web_dir в конфиге абсолютный.
       # Записи — named volume recordings (общий с egress и secretary).
-      - ../config.yaml:/etc/office/config.yaml:ro
+      - ./config.yaml:/etc/office/config.yaml:ro
       - recordings:/etc/office/data/recordings
     command: ["-config", "/etc/office/config.yaml"]
     env_file:
-      - path: ../.env
+      - path: .env
         required: false
     logging: *log-rotate
 
@@ -103,7 +102,7 @@ services:
   # Секреты — .env (env_file), каталог записей — общий volume.
   secretary:
     build:
-      context: ..
+      context: .
       dockerfile: server/Dockerfile
       # См. backend: bun install в bridge-сети buildkit висит на IPv6.
       network: host
@@ -112,19 +111,18 @@ services:
     environment:
       LLM_PROMPT_FILE: /etc/office/secretary-prompt.md
     env_file:
-      - path: ../.env
+      - path: .env
         required: false
     volumes:
       - recordings:/data/recordings
       # системный промпт — редактируется на хосте, подхватывается без перезапуска
-      - ../deploy/secretary-prompt.md:/etc/office/secretary-prompt.md:ro
+      - ./deploy/secretary-prompt.md:/etc/office/secretary-prompt.md:ro
     logging: *log-rotate
     depends_on:
       recordings-init:
         condition: service_completed_successfully
 
 volumes:
-  caddy_data:
   # Записи: named volume, а не bind-mount — не зависит от прав хостового
   # каталога. Права внутри чинит одноразовый recordings-init (образ egress).
   # В dev — bind в data/recordings через docker-compose.dev.yml.
