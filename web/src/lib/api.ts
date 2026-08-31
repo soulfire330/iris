@@ -220,3 +220,21 @@ export async function fetchRecordings(room: string): Promise<RecordingFile[]> {
   if (!res.ok) throw new Error(data.error ?? `Ошибка ${res.status}`);
   return data as RecordingFile[];
 }
+
+// Скачивание записи: fetch с Bearer-заголовком → blob → сохранение.
+// Голой ссылкой нельзя — навигация браузера не отправит Authorization,
+// бэкенд ответит 401 (см. requireToken).
+export async function downloadRecording(room: string, name: string): Promise<void> {
+  const res = await req(`/api/recordings/${encodeURIComponent(name)}?room=${encodeURIComponent(room)}`);
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error ?? `Ошибка ${res.status}`);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatRecDay } from "@/lib/format";
 import type { ChatMessage } from "@/lib/chat";
+import { downloadRecording } from "@/lib/api";
 import type { RecordingFile } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -216,14 +217,22 @@ export function SecretaryPanel({
                           {recMetaLine(r) && (
                             <span className="font-mono text-xs text-neutral-500">{recMetaLine(r)}</span>
                           )}
-                          <a
-                            href={`/api/recordings/${encodeURIComponent(r.name)}?room=${encodeURIComponent(room)}`}
-                            download
+                          <button
+                            // Голая ссылка не отправляет Authorization (401) —
+                            // качаем через fetch с токеном (downloadRecording).
+                            onClick={async () => {
+                              try {
+                                await downloadRecording(room, r.name);
+                              } catch (e) {
+                                console.error("download failed", e);
+                              }
+                            }}
                             title="Скачать"
-                            className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-foreground/5 hover:text-foreground"
+                            aria-label="Скачать"
+                            className="flex h-7 w-7 flex-none cursor-pointer items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-foreground/5 hover:text-foreground"
                           >
                             <DownloadSimple className="h-3.5 w-3.5" />
-                          </a>
+                          </button>
                         </div>
                       </div>
                       {/* AI-сводка: статус и текст пишет воркер-секретарь в
