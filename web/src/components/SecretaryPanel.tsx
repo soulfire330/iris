@@ -174,7 +174,7 @@ export function SecretaryPanel({
                     </div>
                   </div>
                   {aiSummary && (
-                    <SummaryBlock status="" error="" text="" waitingText="AI-сводка появится после звонка." />
+                    <SummaryBlock status="" text="" waitingText="AI-сводка появится после звонка." />
                   )}
                 </div>
               )}
@@ -197,7 +197,7 @@ export function SecretaryPanel({
                     </div>
                   </div>
                   {saving.ai && (
-                    <SummaryBlock status="" error="" text="" waitingText="AI-сводка появится после звонка." />
+                    <SummaryBlock status="" text="" waitingText="AI-сводка появится после звонка." />
                   )}
                 </div>
               )}
