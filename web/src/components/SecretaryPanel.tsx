@@ -237,7 +237,7 @@ export function SecretaryPanel({
                       </div>
                       {/* AI-сводка: статус и текст пишет воркер-секретарь в
                           {имя}.summary.json, бэкенд отдаёт в списке. */}
-                      {r.summary && <SummaryBlock status={r.ai_status} error={r.ai_error} text={r.summary_text} />}
+                      {r.summary && <SummaryBlock status={r.ai_status} text={r.summary_text} />}
                     </div>
                   ))}
                 </>
@@ -325,13 +325,11 @@ export function SecretaryPanel({
 // large — для раскладки «Все сводки»: развёрнута сразу, текст крупнее.
 export function SummaryBlock({
   status,
-  error,
   text,
   large = false,
   waitingText = "Готовится…",
 }: {
   status: string;
-  error: string;
   text: string;
   large?: boolean;
   // Что писать вместо «готовится…», когда статус ещё не done (живая запись).

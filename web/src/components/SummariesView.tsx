@@ -67,7 +67,7 @@ export function SummariesView({
                       <span className="flex-none text-sm font-medium">{formatRecDay(r.started_at)}</span>
                       {meta(r) && <span className="truncate text-xs text-neutral-500">{meta(r)}</span>}
                     </div>
-                    <SummaryBlock large status={r.ai_status} error={r.ai_error} text={r.summary_text} />
+                    <SummaryBlock large status={r.ai_status} text={r.summary_text} />
                   </div>
                 ))}
               </div>
