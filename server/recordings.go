@@ -41,7 +41,7 @@ const trackPollInterval = 10 * time.Second // частота догона дор
 
 // trackManifest — строка манифеста дорожек.
 type trackManifest struct {
-	File      string `json:"file"`       // имя файла дорожки рядом с записью
+	File      string `json:"file"` // имя файла дорожки рядом с записью
 	Login     string `json:"login"`
 	Name      string `json:"name"`       // отображаемое имя (Employee); пусто — секретарь возьмёт логин
 	StartedAt string `json:"started_at"` // RFC3339 — старт захвата (egress)
@@ -64,6 +64,15 @@ func recRoomMeta(name string, startedAt time.Time) string {
 
 func recRoomMetaSummary(name, startedAt string) string {
 	return fmt.Sprintf(`{"recording":true,"summary":true,"rec_started_at":%q,"rec_name":%q}`, startedAt, name)
+}
+
+// startRoomMeta — метаданные комнаты на старте записи. auto_summary заказывает
+// сводку сразу: формат тот же, что у AI-кнопки, — фронт видит её заказанной.
+func startRoomMeta(name string, startedAt time.Time, autoSummary bool) string {
+	if autoSummary {
+		return recRoomMetaSummary(name, startedAt.Format(time.RFC3339))
+	}
+	return recRoomMeta(name, startedAt)
 }
 
 // recNameRe — имя файла записи: 2025-06-11_14-30_ivanov.mp4, коллизии — суффикс -2.
@@ -146,7 +155,7 @@ func (a *App) roomDir(room string) string {
 // handleRecordingStart — POST /api/recording/start?room=. Тело: {login}. 409,
 // если запись уже идёт; имя файла берёт на себя бэкенд, egress пишет в volume.
 // AI-сводка кнопкой не стартуется — заказывается отдельно при идущей записи
-// (handleRecordingSummary).
+// (handleRecordingSummary) или автоматически при server.auto_summary.
 func (a *App) handleRecordingStart(w http.ResponseWriter, r *http.Request) {
 	a.recMu.Lock()
 	defer a.recMu.Unlock()
@@ -206,19 +215,20 @@ func (a *App) handleRecordingStart(w http.ResponseWriter, r *http.Request) {
 	// Метаданные комнаты — единственный канал статуса для клиентов. Если не
 	// обновились, egress уже идёт, но тега ни у кого не будет — лог на потом.
 	if _, err := a.livekit.UpdateRoomMetadata(ctx, &livekit.UpdateRoomMetadataRequest{
-		Room: room, Metadata: recRoomMeta(name, time.Now()),
+		Room: room, Metadata: startRoomMeta(name, time.Now(), a.cfg.Server.AutoSummary),
 	}); err != nil {
 		slog.Warn("recording: room metadata not updated", "name", name, "err", err)
 	}
 
 	// Sidecar пишем сразу, а не на стопе: egress может завершиться сам (комната
-	// опустела), и тогда без него записи не будет в списке. Флаг summary сюда
-	// попадает позже — из handleRecordingSummary.
+	// опустела), и тогда без него записи не будет в списке. Флаг summary ставится
+	// либо здесь (auto_summary), либо позже — из handleRecordingSummary.
 	a.activeRec[room] = name
 	if b, err := json.Marshal(recMeta{
 		StartedBy:    req.Login,
 		StartedAt:    time.Unix(0, info.StartedAt).Format(time.RFC3339), // StartedAt — наносекунды
 		Participants: []string{},
+		Summary:      a.cfg.Server.AutoSummary,
 	}); err == nil {
 		if err := os.WriteFile(filepath.Join(dir, strings.TrimSuffix(name, ".mp4")+".json"), b, 0o644); err != nil {
 			slog.Error("recording: sidecar write failed", "name", name, "err", err)

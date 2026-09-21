@@ -18,11 +18,14 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Listen    string         `yaml:"listen"`
-	LiveKit   LiveKitCfg     `yaml:"livekit"`
-	DataDir   string         `yaml:"data_dir"`
-	WebDir    string         `yaml:"web_dir"`
+	Listen    string          `yaml:"listen"`
+	LiveKit   LiveKitCfg      `yaml:"livekit"`
+	DataDir   string          `yaml:"data_dir"`
+	WebDir    string          `yaml:"web_dir"`
 	RateLimit RateLimitConfig `yaml:"rate_limit"`
+	// AutoSummary — заказывать AI-сводку каждой новой записи: флаг summary
+	// ставится в sidecar и метаданные комнаты на старте записи (кнопка AI не нужна).
+	AutoSummary bool `yaml:"auto_summary"`
 }
 
 // RateLimitConfig — per-IP лимиты публичных эндпоинтов (login, rooms,

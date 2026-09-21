@@ -13,6 +13,10 @@ server:
   data_dir: ./data
   # Путь в образе office (см. server/Dockerfile); в dev фронт отдаёт vite.
   web_dir: /usr/share/office/web-dist
+  # AI-сводка каждой новой записи без кнопки AI: флаг summary в sidecar и
+  # метаданных комнаты на старте. Нужны STT/LLM-ключи в .env (секретарь),
+  # иначе записи ждут разбора, пока .env не настроен.
+  auto_summary: false
   # Per-IP лимиты публичных эндпоинтов (login, rooms, avatar, public/*):
   # rate — запросов в секунду, burst — всплеск. 0 — выключено.
   rate_limit:

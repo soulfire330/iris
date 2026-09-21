@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -61,6 +62,21 @@ func TestFillRecMetaKeepsSummary(t *testing.T) {
 	fillRecMeta(&meta, "2025-06-11_14-30_ivanov.mp4", "2025-06-11T14:30:00+03:00")
 	if !meta.Summary || meta.StartedBy != "ivanov" || meta.StartedAt == "" {
 		t.Fatalf("sidecar: %+v", meta)
+	}
+}
+
+// TestStartRoomMetaAutoSummary — auto_summary заказывает сводку уже в стартовых
+// метаданных (формат как у AI-кнопки), без флага — метаданные без summary.
+func TestStartRoomMetaAutoSummary(t *testing.T) {
+	at := time.Date(2025, 6, 11, 14, 30, 0, 0, time.UTC)
+	auto := startRoomMeta("a.mp4", at, true)
+	for _, want := range []string{`"recording":true`, `"summary":true`, `"rec_name":"a.mp4"`} {
+		if !strings.Contains(auto, want) {
+			t.Fatalf("auto: нет %s в %s", want, auto)
+		}
+	}
+	if plain := startRoomMeta("a.mp4", at, false); strings.Contains(plain, "summary") {
+		t.Fatalf("plain: %s", plain)
 	}
 }
 
